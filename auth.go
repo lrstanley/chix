@@ -5,6 +5,7 @@ package chix
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -39,9 +40,9 @@ type AuthService[Ident any, ID comparable] interface {
 //
 // It is recommended to use an authentication key with 32 or 64 bytes. The
 // encryption key, if set, must be either 16, 24, or 32 bytes to select
-// AES-128, AES-192, or AES-256 modes. The following link can be used to
-// generate a random key:
-//   * https://go.dev/play/p/oTAJYohgfx_P
+// AES-128, AES-192, or AES-256 modes. Provide the keys in hexidecimal string
+// format. The following link can be used to generate a random key:
+//   * https://go.dev/play/p/YWAxxuyMazO
 //
 // The following endpoints are implemented:
 //   * GET: <mount>/self - returns the current user authentication info.
@@ -49,8 +50,17 @@ type AuthService[Ident any, ID comparable] interface {
 //   * GET: <mount>/providers/{provider} - initiates the provider authentication.
 //   * GET: <mount>/providers/{provider}/callback - redirect target from the provider.
 //   * GET: <mount>/logout - logs the user out.
-func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authKey, encryptKey []byte) *AuthHandler[Ident, ID] {
-	authStore := sessions.NewCookieStore(authKey, encryptKey)
+func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authKey, encryptKey string) *AuthHandler[Ident, ID] {
+	authKeyBytes, err := hex.DecodeString(authKey)
+	if err != nil {
+		panic(err)
+	}
+	encryptKeyBytes, err := hex.DecodeString(encryptKey)
+	if err != nil {
+		panic(err)
+	}
+
+	authStore := sessions.NewCookieStore(authKeyBytes, encryptKeyBytes)
 	authStore.MaxAge(DefaulltCookieMaxAge)
 	authStore.Options.Path = "/"
 	authStore.Options.HttpOnly = true
