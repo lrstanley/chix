@@ -14,7 +14,6 @@ require (
 
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
