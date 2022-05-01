@@ -1,6 +1,6 @@
 <!-- template:begin:header -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
-<p align="center">chix -- go-flags wrapper with useful helpers</p>
+<p align="center">chix -- helper middleware and functionality for go-chi/chi</p>
 <p align="center">
   <a href="https://github.com/lrstanley/chix/tags">
     <img title="Latest Semver Tag" src="https://img.shields.io/github/v/tag/lrstanley/chix?style=flat-square">
@@ -8,6 +8,7 @@
   <a href="https://github.com/lrstanley/chix/commits/master">
     <img title="Last commit" src="https://img.shields.io/github/last-commit/lrstanley/chix?style=flat-square">
   </a>
+
 
   <a href="https://github.com/lrstanley/chix/actions?query=workflow%3Atest+event%3Apush">
     <img title="GitHub Workflow Status (test @ master)" src="https://img.shields.io/github/workflow/status/lrstanley/chix/test/master?label=test&style=flat-square&event=push">
@@ -43,31 +44,22 @@
 
 <!-- template:begin:toc -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
-
 ## :link: Table of Contents
 
-- [TODO](#ballot_box_with_check-todo)
-- [Usage](#gear-usage)
-- [Example help output](#example-help-output)
-- [Generate Markdown](#generate-markdown)
-  - [Example output](#example-output)
-    - [Application Options](#application-options)
-    - [Example Group](#example-group)
-    - [Logging Options](#logging-options)
-- [Support &amp; Assistance](#raising_hand_man-support--assistance)
-- [Contributing](#handshake-contributing)
-- [License](#balance_scale-license)
+  - [Usage](#gear-usage)
+  - [Features](#sparkles-features)
+  - [Support &amp; Assistance](#raising_hand_man-support--assistance)
+  - [Contributing](#handshake-contributing)
+  - [License](#balance_scale-license)
 <!-- template:end:toc -->
 
 ## :gear: Usage
 
 <!-- template:begin:goget -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
-
 ```console
-go get -u github.com/lrstanley/chix@latest
+$ go get -u github.com/lrstanley/chix@latest
 ```
-
 <!-- template:end:goget -->
 
 ## :sparkles: Features
@@ -109,33 +101,30 @@ go get -u github.com/lrstanley/chix@latest
 
 <!-- template:begin:support -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
-
 ## :raising_hand_man: Support & Assistance
 
-- :heart: Please review the [Code of Conduct](.github/CODE_OF_CONDUCT.md) for
-    guidelines on ensuring everyone has the best experience interacting with
-    the community.
-- :raising_hand_man: Take a look at the [support](.github/SUPPORT.md) document on
-    guidelines for tips on how to ask the right questions.
-- :lady_beetle: For all features/bugs/issues/questions/etc, [head over here](https://github.com/lrstanley/chix/issues/new/choose).
+   * :heart: Please review the [Code of Conduct](.github/CODE_OF_CONDUCT.md) for
+     guidelines on ensuring everyone has the best experience interacting with
+     the community.
+   * :raising_hand_man: Take a look at the [support](.github/SUPPORT.md) document on
+     guidelines for tips on how to ask the right questions.
+   * :lady_beetle: For all features/bugs/issues/questions/etc, [head over here](https://github.com/lrstanley/chix/issues/new/choose).
 <!-- template:end:support -->
 
 <!-- template:begin:contributing -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
-
 ## :handshake: Contributing
 
-- :heart: Please review the [Code of Conduct](.github/CODE_OF_CONDUCT.md) for guidelines
-    on ensuring everyone has the best experience interacting with the
-    community.
-- :clipboard: Please review the [contributing](.github/CONTRIBUTING.md) doc for submitting
-    issues/a guide on submitting pull requests and helping out.
-- :old_key: For anything security related, please review this repositories [security policy](https://github.com/lrstanley/chix/security/policy).
+   * :heart: Please review the [Code of Conduct](.github/CODE_OF_CONDUCT.md) for guidelines
+     on ensuring everyone has the best experience interacting with the
+	   community.
+   * :clipboard: Please review the [contributing](.github/CONTRIBUTING.md) doc for submitting
+     issues/a guide on submitting pull requests and helping out.
+   * :old_key: For anything security related, please review this repositories [security policy](https://github.com/lrstanley/chix/security/policy).
 <!-- template:end:contributing -->
 
 <!-- template:begin:license -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
-
 ## :balance_scale: License
 
 ```
@@ -163,5 +152,4 @@ SOFTWARE.
 ```
 
 _Also located [here](LICENSE)_
-
 <!-- template:end:license -->
