@@ -1,0 +1,15 @@
+*.log
+~*
+*.tmp
+tmp
+*.txt
+dist
+*.test
+*.prof
+*.conf
+*.yml
+*.yaml
+!/.github/**
+vendor/*
+bin
+**/.env

@@ -1,0 +1,288 @@
+// Copyright (c) Liam Stanley <me@liamstanley.io>. All rights reserved. Use
+// of this source code is governed by the MIT license that can be found in
+// the LICENSE file.
+package chix
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/sessions"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
+)
+
+var (
+	// DefaultCookieSecure allows enabling the secure flag on the session cookie.
+	DefaultCookieSecure = false
+
+	// DefaultCookieMaxAge is the max age for the session cookie.
+	DefaulltCookieMaxAge = 30 * 86400
+)
+
+// AuthService is the interface for the authentication service. This will
+// need to be implemented to utilize AuthHandler.
+type AuthService[Ident any, ID comparable] interface {
+	Get(context.Context, ID) (*Ident, error)
+	Set(context.Context, *goth.User) (ID, error)
+	Roles(context.Context, ID) ([]string, error)
+}
+
+// NewAuthHandler creates a new AuthHandler. authKey is used to validate the
+// session cookie. encryptKey is used to encrypt the session cookie. Note that
+// NewAuthHandler should not be called more than once, otherwise a data race
+// may occur.
+//
+// It is recommended to use an authentication key with 32 or 64 bytes. The
+// encryption key, if set, must be either 16, 24, or 32 bytes to select
+// AES-128, AES-192, or AES-256 modes. The following link can be used to
+// generate a random key:
+//   * https://go.dev/play/p/oTAJYohgfx_P
+//
+// The following endpoints are implemented:
+//   * GET: <mount>/self - returns the current user authentication info.
+//   * GET: <mount>/providers - returns a list of all available providers.
+//   * GET: <mount>/providers/{provider} - initiates the provider authentication.
+//   * GET: <mount>/providers/{provider}/callback - redirect target from the provider.
+//   * GET: <mount>/logout - logs the user out.
+func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authKey, encryptKey []byte) *AuthHandler[Ident, ID] {
+	authStore := sessions.NewCookieStore(authKey, encryptKey)
+	authStore.MaxAge(DefaulltCookieMaxAge)
+	authStore.Options.Path = "/"
+	authStore.Options.HttpOnly = true
+	authStore.Options.Secure = DefaultCookieSecure
+	gothic.Store = authStore
+
+	h := &AuthHandler[Ident, ID]{
+		Auth:  auth,
+		Ident: new(Ident),
+		ID:    new(ID),
+	}
+
+	router := chi.NewRouter()
+	router.With(h.AddToContext, h.AuthRequired).Get("/self", h.self)
+	router.Get("/providers", h.providers)
+	router.Get("/providers/{provider}", h.provider)
+	router.Get("/providers/{provider}/callback", h.callback)
+	router.Get("/logout", h.logout)
+	h.router = router
+
+	AddLogHandler(func(r *http.Request) M {
+		id := h.getIDFromSession(r)
+		return M{"user_id": id}
+	})
+
+	return h
+}
+
+// AuthHandler wraps all authentication logic.
+type AuthHandler[Ident any, ID comparable] struct {
+	Auth   AuthService[Ident, ID]
+	Ident  *Ident
+	ID     *ID
+	router http.Handler
+}
+
+// ServeHTTP implements http.Handler.
+func (h *AuthHandler[Ident, ID]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.router.ServeHTTP(w, r)
+}
+
+func (h *AuthHandler[Ident, ID]) providers(w http.ResponseWriter, r *http.Request) {
+	providers := goth.GetProviders()
+	var data []string
+	for _, p := range providers {
+		data = append(data, p.Name())
+	}
+
+	w.WriteHeader(http.StatusOK)
+	JSON(w, r, M{"providers": data})
+}
+
+func (h *AuthHandler[Ident, ID]) provider(w http.ResponseWriter, r *http.Request) {
+	gothic.BeginAuthHandler(w, gothic.GetContextWithProvider(r, chi.URLParam(r, "provider")))
+}
+
+func (h *AuthHandler[Ident, ID]) callback(w http.ResponseWriter, r *http.Request) {
+	guser, err := gothic.CompleteUserAuth(w, gothic.GetContextWithProvider(r, chi.URLParam(r, "provider")))
+	if err != nil {
+		Error(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	id, err := h.Auth.Set(r.Context(), &guser)
+	if err != nil {
+		Error(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := gothic.StoreInSession(authSessionKey, fmt.Sprintf("%v", id), r, w); err != nil {
+		Error(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	JSON(w, r, M{"id": id})
+}
+
+func (h *AuthHandler[Ident, ID]) logout(w http.ResponseWriter, r *http.Request) {
+	_ = gothic.Logout(w, r)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *AuthHandler[Ident, ID]) self(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	JSON(w, r, M{"auth": h.FromContext(r)})
+}
+
+// convertID converts the string stored in session cookies, to the ID type
+// provided by the caller. Only basic types are currently supported.
+func (h *AuthHandler[Ident, ID]) convertID(in string) (ID, error) {
+	var v any
+	var err error
+
+	switch any(h.ID).(type) {
+	case *string:
+		v = in
+	case *int:
+		v, err = strconv.Atoi(in)
+	case *int64:
+		v, err = strconv.ParseInt(in, 10, 64)
+	case *float64:
+		v, err = strconv.ParseFloat(in, 64)
+	case *uint:
+		v, err = strconv.ParseUint(in, 10, 64)
+	case *uint16:
+		v, err = strconv.ParseUint(in, 10, 16)
+	case *uint32:
+		v, err = strconv.ParseUint(in, 10, 32)
+	case *uint64:
+		v, err = strconv.ParseUint(in, 10, 64)
+	default:
+		panic("unsupported ID type")
+	}
+	if err != nil {
+		return *new(ID), err
+	}
+	return v.(ID), nil
+}
+
+// getIDFromSession returns the ID from the session cookie.
+func (h *AuthHandler[Ident, ID]) getIDFromSession(r *http.Request) *ID {
+	key, _ := gothic.GetFromSession(authSessionKey, r)
+	if key == "" {
+		return nil
+	}
+
+	id, err := h.convertID(key)
+	if err != nil {
+		return nil
+	}
+	return &id
+}
+
+// FromContext returns the user authentication info from the request context.
+// Note that this will only work if the AddToContext() middleware has been
+// loaded prior to this middleware.
+func (h *AuthHandler[Ident, ID]) FromContext(r *http.Request) (auth *Ident) {
+	auth, _ = r.Context().Value(contextAuth).(*Ident)
+	return auth
+}
+
+// RolesFromContext returns the user roles from the request context. Note that
+// this will only work if the AddToContext() middleware has been loaded prior
+// to this middleware.
+func (h *AuthHandler[Ident, ID]) RolesFromContext(r *http.Request) (roles []string) {
+	roles, _ = r.Context().Value(contextAuth).([]string)
+	return roles
+}
+
+// AddToContext adds the user authentication info to the request context, using
+// the cookie session information. If used more than once in the same request
+// middleware chain, it will be a no-op.
+func (h *AuthHandler[Ident, ID]) AddToContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, ok := r.Context().Value(contextAuth).(*Ident)
+		if ok { // Already in the context.
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		id := h.getIDFromSession(r)
+		if id == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		auth, err := h.Auth.Get(r.Context(), *id)
+		if err != nil {
+			Log(r).WithError(err).Warn("failed to get auth from session (but id set)")
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), contextAuth, auth)
+
+		roles, err := h.Auth.Roles(r.Context(), *id)
+		if err != nil {
+			Log(r).WithError(err).Warn("failed to get roles from session (but id set)")
+		} else {
+			ctx = context.WithValue(ctx, contextAuthRoles, roles)
+		}
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// AuthRequired is a middleware that requires the user to be authenticated.
+// Note that this requires the AddToContext() middleware to be loaded prior to
+// this middleware.
+func (h *AuthHandler[Ident, ID]) AuthRequired(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, ok := r.Context().Value(contextAuth).(*Ident)
+		if ok { // Already in the context.
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		_ = Error(w, r, http.StatusUnauthorized, errors.New("unauthorized"))
+	})
+}
+
+// RolesRequired is a middleware that requires the user to have the given roles,
+// provided via AuthService.Roles(). Note that this requires the AddToContext()
+// middleware to be loaded prior to this middleware.
+func (h *AuthHandler[Ident, ID]) RoleRequired(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id := h.getIDFromSession(r)
+			if id == nil {
+				if role == "anonymous" {
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				_ = Error(w, r, http.StatusUnauthorized, ErrAuthMissingRole)
+				return
+			}
+
+			roles, err := h.Auth.Roles(r.Context(), *id)
+			if err != nil {
+				_ = Error(w, r, http.StatusInternalServerError, err)
+				return
+			}
+
+			for _, roleName := range roles {
+				if roleName == role {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			_ = Error(w, r, http.StatusUnauthorized, ErrAuthMissingRole)
+		})
+	}
+}
