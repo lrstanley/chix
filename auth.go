@@ -230,7 +230,7 @@ func (h *AuthHandler[Ident, ID]) AddToContext(next http.Handler) http.Handler {
 
 		auth, err := h.Auth.Get(r.Context(), *id)
 		if err != nil {
-			Log(r).WithError(err).Warn("failed to get auth from session (but id set)")
+			Log(r).WithError(err).WithField("user_id", *id).Warn("failed to get auth from session (but id set)")
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -239,7 +239,7 @@ func (h *AuthHandler[Ident, ID]) AddToContext(next http.Handler) http.Handler {
 
 		roles, err := h.Auth.Roles(r.Context(), *id)
 		if err != nil {
-			Log(r).WithError(err).Warn("failed to get roles from session (but id set)")
+			Log(r).WithError(err).WithField("user_id", *id).Warn("failed to get roles from session (but id set)")
 		} else {
 			ctx = context.WithValue(ctx, contextAuthRoles, roles)
 		}
