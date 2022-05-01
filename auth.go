@@ -146,7 +146,7 @@ func (h *AuthHandler[Ident, ID]) logout(w http.ResponseWriter, r *http.Request) 
 
 func (h *AuthHandler[Ident, ID]) self(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	JSON(w, r, M{"auth": h.FromContext(r)})
+	JSON(w, r, M{"auth": h.FromContext(r.Context())})
 }
 
 // convertID converts the string stored in session cookies, to the ID type
@@ -198,17 +198,18 @@ func (h *AuthHandler[Ident, ID]) getIDFromSession(r *http.Request) *ID {
 // FromContext returns the user authentication info from the request context.
 // Note that this will only work if the AddToContext() middleware has been
 // loaded prior to this middleware.
-func (h *AuthHandler[Ident, ID]) FromContext(r *http.Request) (auth *Ident) {
-	auth, _ = r.Context().Value(contextAuth).(*Ident)
+func (h *AuthHandler[Ident, ID]) FromContext(ctx context.Context) (auth *Ident) {
+	auth, _ = ctx.Value(contextAuth).(*Ident)
 	return auth
 }
 
 // RolesFromContext returns the user roles from the request context. Note that
 // this will only work if the AddToContext() middleware has been loaded prior
-// to this middleware.
-func (h *AuthHandler[Ident, ID]) RolesFromContext(r *http.Request) (roles []string) {
-	roles, _ = r.Context().Value(contextAuth).([]string)
-	return roles
+// to this middleware. You can also call RolesFromContext (non-AuthHandler),
+// which will return the same information, for use where you can't easily
+// inject the AuthHandler.
+func (h *AuthHandler[Ident, ID]) RolesFromContext(ctx context.Context) (roles []string) {
+	return RolesFromContext(ctx)
 }
 
 // AddToContext adds the user authentication info to the request context, using
@@ -296,4 +297,12 @@ func (h *AuthHandler[Ident, ID]) RoleRequired(role string) func(http.Handler) ht
 			_ = Error(w, r, http.StatusUnauthorized, ErrAuthMissingRole)
 		})
 	}
+}
+
+// RolesFromContext returns the user roles from the request context, if any.
+// Note that this will only work if the AddToContext() middleware has been
+// loaded, and the user is authenticated.
+func RolesFromContext(ctx context.Context) (roles []string) {
+	roles, _ = ctx.Value(contextAuthRoles).([]string)
+	return roles
 }
