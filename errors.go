@@ -22,6 +22,9 @@ var (
 	// ignored.
 	DefaultMaskError = true
 
+	// ErrMatchStatus can be used to use the status code text as the error message.
+	ErrMatchStatus = errors.New("no-op status code error")
+
 	ErrAccessDenied       = errors.New("access denied")
 	ErrInvalidAPIKey      = errors.New("invalid api key provided")
 	ErrAPIVersionMissing  = errors.New("api version not specified")
@@ -97,6 +100,10 @@ func defaultErrorHandler(w http.ResponseWriter, r *http.Request, statusCode int,
 
 	if statusCode == http.StatusNotFound && err == nil {
 		err = errors.New("the requested resource was not found")
+	}
+
+	if errors.Is(err, ErrMatchStatus) {
+		err = errors.New(http.StatusText(statusCode))
 	}
 
 	if err == nil {
