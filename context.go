@@ -10,8 +10,12 @@ package chix
 type contextKey string
 
 const (
-	contextDebug     contextKey = "debug"
-	contextAuth      contextKey = "auth"
-	contextAuthRoles contextKey = "auth_roles"
-	authSessionKey              = "_auth"
+	contextDebug       contextKey = "debug"
+	contextAuth        contextKey = "auth"
+	contextAuthRoles   contextKey = "auth_roles"
+	contextNextURL     contextKey = "next_url"
+	contextSkipNextURL contextKey = "skip_next_url"
+
+	authSessionKey = "_auth"
+	nextSessionKey = "_next"
 )

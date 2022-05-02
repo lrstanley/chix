@@ -135,13 +135,12 @@ func (h *AuthHandler[Ident, ID]) callback(w http.ResponseWriter, r *http.Request
 		Error(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	JSON(w, r, M{"id": id})
+	SecureRedirect(w, r, http.StatusTemporaryRedirect, "/")
 }
 
 func (h *AuthHandler[Ident, ID]) logout(w http.ResponseWriter, r *http.Request) {
 	_ = gothic.Logout(w, r)
-	http.Redirect(w, r, "/", http.StatusFound)
+	SecureRedirect(w, r, http.StatusFound, "/")
 }
 
 func (h *AuthHandler[Ident, ID]) self(w http.ResponseWriter, r *http.Request) {
