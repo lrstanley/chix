@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
@@ -24,6 +25,8 @@ var (
 
 	// DefaultCookieMaxAge is the max age for the session cookie.
 	DefaulltCookieMaxAge = 30 * 86400
+
+	gothInit sync.Once
 )
 
 // AuthService is the interface for the authentication service. This will
@@ -35,9 +38,7 @@ type AuthService[Ident any, ID comparable] interface {
 }
 
 // NewAuthHandler creates a new AuthHandler. authKey is used to validate the
-// session cookie. encryptKey is used to encrypt the session cookie. Note that
-// NewAuthHandler should not be called more than once, otherwise a data race
-// may occur.
+// session cookie. encryptKey is used to encrypt the session cookie.
 //
 // It is recommended to use an authentication key with 32 or 64 bytes. The
 // encryption key, if set, must be either 16, 24, or 32 bytes to select
@@ -61,12 +62,14 @@ func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authK
 		panic(err)
 	}
 
-	authStore := sessions.NewCookieStore(authKeyBytes, encryptKeyBytes)
-	authStore.MaxAge(DefaulltCookieMaxAge)
-	authStore.Options.Path = "/"
-	authStore.Options.HttpOnly = true
-	authStore.Options.Secure = DefaultCookieSecure
-	gothic.Store = authStore
+	gothInit.Do(func() {
+		authStore := sessions.NewCookieStore(authKeyBytes, encryptKeyBytes)
+		authStore.MaxAge(DefaulltCookieMaxAge)
+		authStore.Options.Path = "/"
+		authStore.Options.HttpOnly = true
+		authStore.Options.Secure = DefaultCookieSecure
+		gothic.Store = authStore
+	})
 
 	h := &AuthHandler[Ident, ID]{
 		Auth:  auth,
