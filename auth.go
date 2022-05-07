@@ -113,8 +113,7 @@ func (h *AuthHandler[Ident, ID]) providers(w http.ResponseWriter, r *http.Reques
 		data = append(data, p.Name())
 	}
 
-	w.WriteHeader(http.StatusOK)
-	JSON(w, r, M{"providers": data})
+	JSON(w, r, http.StatusOK, M{"providers": data})
 }
 
 func (h *AuthHandler[Ident, ID]) provider(w http.ResponseWriter, r *http.Request) {
@@ -147,8 +146,7 @@ func (h *AuthHandler[Ident, ID]) logout(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AuthHandler[Ident, ID]) self(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	JSON(w, r, M{"auth": h.FromContext(r.Context())})
+	JSON(w, r, http.StatusOK, M{"auth": h.FromContext(r.Context())})
 }
 
 // convertID converts the string stored in session cookies, to the ID type

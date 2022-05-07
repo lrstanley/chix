@@ -110,8 +110,6 @@ func defaultErrorHandler(w http.ResponseWriter, r *http.Request, statusCode int,
 		return false
 	}
 
-	w.WriteHeader(statusCode)
-
 	statusText := http.StatusText(statusCode)
 
 	id := middleware.GetReqID(r.Context())
@@ -128,7 +126,7 @@ func defaultErrorHandler(w http.ResponseWriter, r *http.Request, statusCode int,
 	}
 
 	if DefaultAPIPrefix != "" && strings.HasPrefix(r.URL.Path, DefaultAPIPrefix) {
-		JSON(w, r, M{
+		JSON(w, r, statusCode, M{
 			"error":      err.Error(),
 			"type":       statusText,
 			"code":       statusCode,

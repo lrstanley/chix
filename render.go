@@ -36,7 +36,7 @@ func (m M) Fields() (f log.Fields) {
 //
 // JSON also supports prettification when the origin request has "?pretty=true"
 // or similar.
-func JSON(w http.ResponseWriter, r *http.Request, v any) {
+func JSON(w http.ResponseWriter, r *http.Request, status int, v any) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 
@@ -49,5 +49,6 @@ func JSON(w http.ResponseWriter, r *http.Request, v any) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())
 }
