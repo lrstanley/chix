@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -208,7 +209,7 @@ func (h *AuthHandler[Ident, ID]) FromContext(ctx context.Context) (auth *Ident) 
 // to this middleware. You can also call RolesFromContext (non-AuthHandler),
 // which will return the same information, for use where you can't easily
 // inject the AuthHandler.
-func (h *AuthHandler[Ident, ID]) RolesFromContext(ctx context.Context) (roles []string) {
+func (h *AuthHandler[Ident, ID]) RolesFromContext(ctx context.Context) (roles AuthRoles) {
 	return RolesFromContext(ctx)
 }
 
@@ -302,7 +303,26 @@ func (h *AuthHandler[Ident, ID]) RoleRequired(role string) func(http.Handler) ht
 // RolesFromContext returns the user roles from the request context, if any.
 // Note that this will only work if the AddToContext() middleware has been
 // loaded, and the user is authenticated.
-func RolesFromContext(ctx context.Context) (roles []string) {
+func RolesFromContext(ctx context.Context) (roles AuthRoles) {
 	roles, _ = ctx.Value(contextAuthRoles).([]string)
-	return roles
+	return AuthRoles(roles)
+}
+
+// AuthRoles provides helper methods for working with roles.
+type AuthRoles []string
+
+// Has returns true if the given role is present for the authenticated identity
+// in the context.
+func (r AuthRoles) Has(role string) bool {
+	if len(r) == 0 {
+		return false
+	}
+
+	for _, r := range r {
+		if strings.EqualFold(r, role) {
+			return true
+		}
+	}
+
+	return false
 }
