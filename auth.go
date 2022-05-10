@@ -230,14 +230,15 @@ func (h *AuthHandler[Ident, ID]) AddToContext(next http.Handler) http.Handler {
 			return
 		}
 
-		auth, err := h.Auth.Get(r.Context(), *id)
+		ident, err := h.Auth.Get(r.Context(), *id)
 		if err != nil {
-			Log(r).WithError(err).WithField("user_id", *id).Warn("failed to get auth from session (but id set)")
+			Log(r).WithError(err).WithField("user_id", *id).Warn("failed to get ident from session (but id set)")
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), contextAuth, auth)
+		ctx := context.WithValue(r.Context(), contextAuth, ident)
+		ctx = context.WithValue(ctx, contextAuthID, *id)
 
 		roles, err := h.Auth.Roles(r.Context(), *id)
 		if err != nil {
@@ -306,6 +307,17 @@ func (h *AuthHandler[Ident, ID]) RoleRequired(role string) func(http.Handler) ht
 func RolesFromContext(ctx context.Context) (roles AuthRoles) {
 	roles, _ = ctx.Value(contextAuthRoles).([]string)
 	return AuthRoles(roles)
+}
+
+// IDFromContext returns the user ID from the request context, if any. Note that
+// this will only work if the AddToContext() middleware has been loaded, and the
+// user is authenticated.
+//
+// Returns 0 if the user is not authenticated or the ID was not found in the
+// context.
+func IDFromContext[ID comparable](ctx context.Context) (id ID) {
+	id, _ = ctx.Value(contextAuthID).(ID)
+	return id
 }
 
 // AuthRoles provides helper methods for working with roles.

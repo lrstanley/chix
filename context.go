@@ -12,6 +12,7 @@ type contextKey string
 const (
 	contextDebug       contextKey = "debug"
 	contextAuth        contextKey = "auth"
+	contextAuthID      contextKey = "auth_id"
 	contextAuthRoles   contextKey = "auth_roles"
 	contextNextURL     contextKey = "next_url"
 	contextSkipNextURL contextKey = "skip_next_url"
