@@ -320,6 +320,17 @@ func IDFromContext[ID comparable](ctx context.Context) (id ID) {
 	return id
 }
 
+// IdentFromContext returns the ident from the request context, if any. Note that
+// this will only work if the AddToContext() middleware has been loaded, and the
+// user is authenticated. Provided Ident type MUST match what is used in AuthHandler.
+//
+// Returns nil if the user is not authenticated or the ident was not found in the
+// context.
+func IdentFromContext[Ident any](ctx context.Context) (auth *Ident) {
+	auth, _ = ctx.Value(contextAuth).(*Ident)
+	return auth
+}
+
 // AuthRoles provides helper methods for working with roles.
 type AuthRoles []string
 
