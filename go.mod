@@ -8,7 +8,7 @@ require (
 	github.com/go-playground/form/v4 v4.2.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/lrstanley/go-bogon v0.0.0-20220429030658-4fc261762ff8
-	github.com/markbates/goth v1.71.1
+	github.com/markbates/goth v1.72.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
