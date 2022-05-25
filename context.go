@@ -16,6 +16,7 @@ const (
 	contextAuthRoles   contextKey = "auth_roles"
 	contextNextURL     contextKey = "next_url"
 	contextSkipNextURL contextKey = "skip_next_url"
+	contextIP          contextKey = "ip"
 
 	authSessionKey = "_auth"
 	nextSessionKey = "_next"

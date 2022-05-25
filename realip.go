@@ -5,6 +5,7 @@
 package chix
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -219,4 +220,24 @@ func UsePrivateIP(next http.Handler) http.Handler {
 
 		_ = Error(w, r, http.StatusForbidden, ErrAccessDenied)
 	})
+}
+
+// UseContextIP can be used to add the requests IP to the context. This is beneficial
+// for passing the request context to a request-unaware function/method/service, that
+// does not have access to the original request. Ensure that this middleware is
+// registered after UseRealIP, otherwise the stored IP may be incorrect.
+func UseContextIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextIP, r.RemoteAddr)))
+	})
+}
+
+// GetContextIP can be used to retrieve the IP from the context, that was previously
+// set by UseContextIP. If no IP was set, an empty string is returned.
+func GetContextIP(ctx context.Context) string {
+	if ip, ok := ctx.Value(contextIP).(string); ok {
+		return ip
+	}
+
+	return ""
 }
