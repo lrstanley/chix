@@ -201,8 +201,10 @@ func (rip *realIP) parseForwardedFor(value string) (clientIP string, valid bool)
 func parseIP(ip string) net.IP {
 	parsedIP := net.ParseIP(strings.TrimSpace(ip))
 
-	if v4 := parsedIP.To4(); v4 != nil {
-		return v4
+	if parsedIP != nil {
+		if v4 := parsedIP.To4(); v4 != nil {
+			return v4
+		}
 	}
 
 	return parsedIP
@@ -228,16 +230,21 @@ func UsePrivateIP(next http.Handler) http.Handler {
 // registered after UseRealIP, otherwise the stored IP may be incorrect.
 func UseContextIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextIP, r.RemoteAddr)))
+		ip, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+		if err != nil || ip == "" {
+			ip = r.RemoteAddr
+		}
+
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextIP, parseIP(ip))))
 	})
 }
 
 // GetContextIP can be used to retrieve the IP from the context, that was previously
-// set by UseContextIP. If no IP was set, an empty string is returned.
-func GetContextIP(ctx context.Context) string {
-	if ip, ok := ctx.Value(contextIP).(string); ok {
+// set by UseContextIP. If no IP was set, nil is returned.
+func GetContextIP(ctx context.Context) net.IP {
+	if ip, ok := ctx.Value(contextIP).(net.IP); ok {
 		return ip
 	}
 
-	return ""
+	return nil
 }
