@@ -19,6 +19,13 @@ import (
 
 type Runner func(ctx context.Context) error
 
+func (r Runner) Invoke(ctx context.Context) func() error {
+	fn := func() error {
+		return r(ctx)
+	}
+	return fn
+}
+
 // Run runs the provided http server, and listens for any termination signals
 // (SIGINT, SIGTERM, SIGQUIT, etc). If runners are provided, those will run
 // concurrently.
@@ -46,22 +53,19 @@ func RunCtx(ctx context.Context, srv *http.Server, runners ...Runner) error {
 		srv.MaxHeaderBytes = 1 << 20
 	}
 
-	g, gctx := errgroup.WithContext(ctx)
+	var g *errgroup.Group
+	g, ctx = errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return signalListener(gctx)
+		return signalListener(ctx)
 	})
 
 	g.Go(func() error {
-		return httpServer(gctx, srv)
+		return httpServer(ctx, srv)
 	})
 
 	for _, runner := range runners {
-		fn := func() error {
-			return runner(gctx)
-		}
-
-		g.Go(fn)
+		g.Go(runner.Invoke(ctx))
 	}
 
 	return g.Wait()
