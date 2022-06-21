@@ -29,10 +29,10 @@ func httpOK(w http.ResponseWriter, r *http.Request) {
 // You can also use go:embed to embed the robots.txt file into your binary.
 // Example:
 //
-//   //go:embed your/robots.txt
-//   var robotsTxt string
-//   [...]
-//   chix.UseRobotsTxt(router, robotsTxt)
+//	//go:embed your/robots.txt
+//	var robotsTxt string
+//	[...]
+//	chix.UseRobotsTxt(router, robotsTxt)
 func UseRobotsTxt(custom string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -64,7 +64,7 @@ func Bind(w http.ResponseWriter, r *http.Request, v any) (ok bool) {
 			err = DefaultDecoder.Decode(v, r.PostForm)
 		}
 	default:
-		_ = Error(w, r, http.StatusBadRequest, fmt.Errorf("unsupported method %s", r.Method))
+		_ = Error(w, r, WrapError(fmt.Errorf("unsupported method %s", r.Method), http.StatusBadRequest))
 		return false
 	}
 	if err != nil {
@@ -73,13 +73,13 @@ func Bind(w http.ResponseWriter, r *http.Request, v any) (ok bool) {
 
 handle:
 	if err != nil {
-		_ = Error(w, r, http.StatusBadRequest, rerr)
+		_ = Error(w, r, WrapError(rerr, http.StatusBadRequest))
 		return false
 	}
 
 	if v, ok := v.(Validatable); ok {
 		if err = v.Validate(); err != nil {
-			_ = Error(w, r, http.StatusBadRequest, err)
+			_ = Error(w, r, WrapError(err, http.StatusBadRequest))
 			return false
 		}
 
@@ -93,7 +93,7 @@ handle:
 			}
 
 			// for _, err := range err.(validator.ValidationErrors) {}
-			_ = Error(w, r, http.StatusBadRequest, err)
+			_ = Error(w, r, WrapError(err, http.StatusBadRequest))
 			return false
 		}
 

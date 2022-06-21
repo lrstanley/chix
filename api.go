@@ -15,10 +15,10 @@ func APIVersionMatch(version string) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			clientVersion := r.Header.Get(DefaultAPIVersionHeader)
 			if clientVersion == "" {
-				_ = Error(w, r, http.StatusPreconditionFailed, ErrAPIVersionMissing)
+				_ = Error(w, r, WrapError(ErrAPIVersionMissing, http.StatusPreconditionFailed))
 				return
 			} else if clientVersion != version {
-				_ = Error(w, r, http.StatusPreconditionFailed, ErrAPIVersionMismatch)
+				_ = Error(w, r, WrapError(ErrAPIVersionMismatch, http.StatusPreconditionFailed))
 				return
 			}
 
@@ -58,7 +58,7 @@ func UseAPIKeyRequired(keys []string) func(next http.Handler) http.Handler {
 				}
 			}
 
-			Error(w, r, http.StatusUnauthorized, ErrInvalidAPIKey)
+			Error(w, r, WrapError(ErrInvalidAPIKey, http.StatusUnauthorized))
 		})
 	}
 }

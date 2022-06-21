@@ -40,10 +40,10 @@ func UseNextURL(next http.Handler) http.Handler {
 
 // SecureRedirect supports validating that redirect requests fulfill the the
 // following conditions:
-//   * Target URL must match one of:
-//     * Absolute/relative to the same host
-//     * http or https, with a host matching the requested host (no cross-domain, no port matching).
-//   * Target URL can be parsed by url.Parse().
+//   - Target URL must match one of:
+//   - Absolute/relative to the same host
+//   - http or https, with a host matching the requested host (no cross-domain, no port matching).
+//   - Target URL can be parsed by url.Parse().
 //
 // Additionally, if using chix.UseNextURL middleware, and the current session
 // has a "next" URL stored, the redirect will be to that URL. This allows

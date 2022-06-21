@@ -47,13 +47,14 @@ func UseRealIPDefault(next http.Handler) http.Handler {
 // ranges are specified.
 //
 // NOTE: if multiple headers are configured to be trusted, the lookup order is:
-//   * X-Real-IP
-//   * True-Client-IP
-//   * X-Forwarded-For
+//   - X-Real-IP
+//   - True-Client-IP
+//   - X-Forwarded-For
 //
 // Examples:
-// 		router.Use(chix.UseRealIP([]string{"1.2.3.4", "10.0.0.0/24"}, chix.OptUseXForwardedFor))
-// 		router.Use(nil, chix.OptTrustBogon|chix.OptUseXForwardedFor))
+//
+//	router.Use(chix.UseRealIP([]string{"1.2.3.4", "10.0.0.0/24"}, chix.OptUseXForwardedFor))
+//	router.Use(nil, chix.OptTrustBogon|chix.OptUseXForwardedFor))
 func UseRealIP(trusted []string, flags RealIPOptions) func(next http.Handler) http.Handler {
 	if flags == 0 {
 		panic(ErrRealIPNoOpts)
@@ -220,7 +221,7 @@ func UsePrivateIP(next http.Handler) http.Handler {
 			return
 		}
 
-		_ = Error(w, r, http.StatusForbidden, ErrAccessDenied)
+		_ = Error(w, r, WrapError(ErrAccessDenied, http.StatusForbidden))
 	})
 }
 

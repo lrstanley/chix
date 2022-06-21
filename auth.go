@@ -7,7 +7,6 @@ package chix
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -45,14 +44,14 @@ type AuthService[Ident any, ID comparable] interface {
 // encryption key, if set, must be either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256 modes. Provide the keys in hexidecimal string
 // format. The following link can be used to generate a random key:
-//   * https://go.dev/play/p/YWAxxuyMazO
+//   - https://go.dev/play/p/YWAxxuyMazO
 //
 // The following endpoints are implemented:
-//   * GET: <mount>/self - returns the current user authentication info.
-//   * GET: <mount>/providers - returns a list of all available providers.
-//   * GET: <mount>/providers/{provider} - initiates the provider authentication.
-//   * GET: <mount>/providers/{provider}/callback - redirect target from the provider.
-//   * GET: <mount>/logout - logs the user out.
+//   - GET: <mount>/self - returns the current user authentication info.
+//   - GET: <mount>/providers - returns a list of all available providers.
+//   - GET: <mount>/providers/{provider} - initiates the provider authentication.
+//   - GET: <mount>/providers/{provider}/callback - redirect target from the provider.
+//   - GET: <mount>/logout - logs the user out.
 func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authKey, encryptKey string) *AuthHandler[Ident, ID] {
 	authKeyBytes, err := hex.DecodeString(authKey)
 	if err != nil {
@@ -124,18 +123,18 @@ func (h *AuthHandler[Ident, ID]) provider(w http.ResponseWriter, r *http.Request
 func (h *AuthHandler[Ident, ID]) callback(w http.ResponseWriter, r *http.Request) {
 	guser, err := gothic.CompleteUserAuth(w, gothic.GetContextWithProvider(r, chi.URLParam(r, "provider")))
 	if err != nil {
-		Error(w, r, http.StatusInternalServerError, err)
+		Error(w, r, err)
 		return
 	}
 
 	id, err := h.Auth.Set(r.Context(), &guser)
 	if err != nil {
-		Error(w, r, http.StatusInternalServerError, err)
+		Error(w, r, err)
 		return
 	}
 
 	if err := gothic.StoreInSession(authSessionKey, fmt.Sprintf("%v", id), r, w); err != nil {
-		Error(w, r, http.StatusInternalServerError, err)
+		Error(w, r, err)
 		return
 	}
 	SecureRedirect(w, r, http.StatusTemporaryRedirect, "/")
@@ -262,7 +261,7 @@ func (h *AuthHandler[Ident, ID]) AuthRequired(next http.Handler) http.Handler {
 			return
 		}
 
-		_ = Error(w, r, http.StatusUnauthorized, errors.New("unauthorized"))
+		_ = Error(w, r, WrapCode(http.StatusUnauthorized))
 	})
 }
 
@@ -279,13 +278,13 @@ func (h *AuthHandler[Ident, ID]) RoleRequired(role string) func(http.Handler) ht
 					return
 				}
 
-				_ = Error(w, r, http.StatusUnauthorized, ErrAuthMissingRole)
+				_ = Error(w, r, WrapError(ErrAuthMissingRole, http.StatusUnauthorized))
 				return
 			}
 
 			roles, err := h.Auth.Roles(r.Context(), *id)
 			if err != nil {
-				_ = Error(w, r, http.StatusInternalServerError, err)
+				_ = Error(w, r, err)
 				return
 			}
 
@@ -296,7 +295,7 @@ func (h *AuthHandler[Ident, ID]) RoleRequired(role string) func(http.Handler) ht
 				}
 			}
 
-			_ = Error(w, r, http.StatusUnauthorized, ErrAuthMissingRole)
+			_ = Error(w, r, WrapError(ErrAuthMissingRole, http.StatusUnauthorized))
 		})
 	}
 }

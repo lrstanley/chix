@@ -19,10 +19,10 @@ import (
 //
 // Example usage:
 //
-//   //go:embed all:public/dist
-//   var publicDist embed.FS
-//   [...]
-//   router.Mount("/static", chix.UseStatic("/static", publicDist))
+//	//go:embed all:public/dist
+//	var publicDist embed.FS
+//	[...]
+//	router.Mount("/static", chix.UseStatic("/static", publicDist))
 func UseStatic(path string, embed fs.FS) http.Handler {
 	return http.StripPrefix(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Encoding")
