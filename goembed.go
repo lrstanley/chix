@@ -74,12 +74,9 @@ func UseStatic(ctx context.Context, config *Static) http.Handler {
 		logger.WithField("path", config.LocalPath).Debug("registering static assets in executable directory")
 	} else {
 		logger.WithField("path", config.Path).Debug("registering embedded static assets")
-		walkPath := config.Path
-		if config.Path == "" {
-			walkPath = "."
-		}
+		config.httpFS = http.FS(config.FS)
 
-		_ = fs.WalkDir(config.FS, walkPath, func(path string, info fs.DirEntry, err error) error {
+		_ = fs.WalkDir(config.FS, ".", func(path string, info fs.DirEntry, err error) error {
 			if err != nil || info.IsDir() {
 				return nil
 			}
@@ -87,7 +84,6 @@ func UseStatic(ctx context.Context, config *Static) http.Handler {
 			logger.Debugf("registering embedded asset: %v", path)
 			return nil
 		})
-		config.httpFS = http.FS(config.FS)
 	}
 
 	config.handler = http.FileServer(config.httpFS)
