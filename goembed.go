@@ -7,10 +7,13 @@ package chix
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/apex/log"
@@ -58,18 +61,40 @@ func UseStatic(ctx context.Context, config *Static) http.Handler {
 	if config.Path != "" {
 		config.FS, err = fs.Sub(config.FS, config.Path)
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed to use subdirectory of filesystem: %w", err))
 		}
 	}
 
-	cwdLocal, _ := os.Stat(config.LocalPath)
-	exeLocal, _ := os.Stat(path.Join(os.Args[0], config.LocalPath))
+	_, srcPath, _, _ := runtime.Caller(1)
+	srcPath = path.Join(filepath.Dir(srcPath), config.LocalPath)
+
+	exePath, err := os.Executable()
+	if err != nil {
+		panic(fmt.Errorf("failed to get executable path: %w", err))
+	}
+	exePath = path.Join(filepath.Dir(exePath), config.LocalPath)
+
+	cwdLocal, _ := os.Stat(config.LocalPath) // Path to the current working directory.
+	srcLocal, _ := os.Stat(srcPath)          // Path to source file, if it's still on the filesystem.
+	exeLocal, _ := os.Stat(exePath)          // Path to the current executable.
+
+	logger.WithFields(log.Fields{
+		"allow_local": config.AllowLocal,
+		"path":        config.Path,
+		"local_path":  config.LocalPath,
+		"src_path":    srcPath,
+		"exe_path":    exePath,
+	}).Debug("static asset search paths")
 
 	if config.AllowLocal && cwdLocal != nil && cwdLocal.IsDir() {
 		config.httpFS = http.Dir(config.LocalPath)
 		logger.WithField("path", config.LocalPath).Debug("registering static assets in current working directory")
+	} else if config.AllowLocal && srcLocal != nil && srcLocal.IsDir() {
+		config.LocalPath = srcPath
+		config.httpFS = http.Dir(config.LocalPath)
+		logger.WithField("path", config.LocalPath).Debug("registering static assets in source file directory")
 	} else if config.AllowLocal && exeLocal != nil && exeLocal.IsDir() {
-		config.LocalPath = path.Join(os.Args[0], config.LocalPath)
+		config.LocalPath = exePath
 		config.httpFS = http.Dir(config.LocalPath)
 		logger.WithField("path", config.LocalPath).Debug("registering static assets in executable directory")
 	} else {
