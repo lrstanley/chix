@@ -9,7 +9,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/lrstanley/go-bogon v0.0.0-20220507183221-362a880cf97b
-	github.com/markbates/goth v1.72.0
+	github.com/markbates/goth v1.73.0
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 )
 
