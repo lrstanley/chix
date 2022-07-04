@@ -165,8 +165,8 @@ func UnwrapError(err error) (error, int) {
 
 	// If the user has wrapped the error, this will override any other code
 	// we have.
-	codeErr := &ErrWithStatusCode{}
-	if errors.As(err, codeErr) {
+	var codeErr *ErrWithStatusCode
+	if errors.As(err, &codeErr) {
 		statusCode = codeErr.Code
 		err = codeErr.Unwrap()
 		return err, statusCode
