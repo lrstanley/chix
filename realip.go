@@ -17,11 +17,13 @@ import (
 // TODO: add tests, e.g. https://github.com/go-chi/chi/blob/master/middleware/realip_test.go
 
 const (
-	OptTrustBogon       RealIPOptions = 1 << iota // Trust bogon IP ranges (private IP ranges).
-	OptTrustAny                                   // Trust any proxy (DON'T USE THIS!).
-	OptUseXForwardedFor                           // Allow using the X-Forwarded-For header.
-	OptUseXRealIP                                 // Allow using the X-Real-IP header.
-	OptUseTrueClientIP                            // Allow using the True-Client-IP header.
+	OptTrustBogon        RealIPOptions = 1 << iota // Trust bogon IP ranges (private IP ranges).
+	OptTrustAny                                    // Trust any proxy (DON'T USE THIS!).
+	OptTrustCloudflare                             // Trust Cloudflare's origin IPs.
+	OptUseXForwardedFor                            // Allow using the X-Forwarded-For header.
+	OptUseXRealIP                                  // Allow using the X-Real-IP header.
+	OptUseTrueClientIP                             // Allow using the True-Client-IP header.
+	OptUseCFConnectingIP                           // Allow using the CF-Connecting-IP header.
 
 	OptDefaultTrust = OptTrustBogon | OptUseXForwardedFor // Default trust options.
 
@@ -47,6 +49,7 @@ func UseRealIPDefault(next http.Handler) http.Handler {
 // ranges are specified.
 //
 // NOTE: if multiple headers are configured to be trusted, the lookup order is:
+//   - CF-Connecting-IP
 //   - X-Real-IP
 //   - True-Client-IP
 //   - X-Forwarded-For
@@ -61,17 +64,13 @@ func UseRealIP(trusted []string, flags RealIPOptions) func(next http.Handler) ht
 	}
 
 	// Must provide at least one proxy header type.
-	if flags&(OptUseXForwardedFor|OptUseXRealIP|OptUseTrueClientIP) == 0 {
+	if flags&(OptUseXForwardedFor|OptUseXRealIP|OptUseTrueClientIP|OptUseCFConnectingIP) == 0 {
 		panic(ErrRealIPNoSource)
 	}
 
 	// ¯\_(ツ)_/¯.
 	if flags&OptTrustAny != 0 {
 		trusted = append(trusted, "0.0.0.0/0")
-	}
-
-	if len(trusted) == 0 && flags&OptTrustBogon == 0 {
-		panic(ErrRealIPNoTrusted)
 	}
 
 	rip := &realIP{
@@ -81,6 +80,10 @@ func UseRealIP(trusted []string, flags RealIPOptions) func(next http.Handler) ht
 	// Add all known bogon IP ranges.
 	if flags&OptTrustBogon != 0 {
 		rip.trusted = append(rip.trusted, bogon.DefaultRanges()...)
+	}
+
+	if flags&OptTrustCloudflare != 0 {
+		rip.trusted = append(rip.trusted, cloudflareRanges()...)
 	}
 
 	// Start parsing user-provided CIDR's and/or IP's.
@@ -107,6 +110,10 @@ func UseRealIP(trusted []string, flags RealIPOptions) func(next http.Handler) ht
 		rip.trusted = append(rip.trusted, cidr)
 	}
 
+	if len(rip.trusted) == 0 {
+		panic(ErrRealIPNoTrusted)
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
@@ -119,25 +126,29 @@ func UseRealIP(trusted []string, flags RealIPOptions) func(next http.Handler) ht
 			}
 
 			// Parse enabled headers by most specific (and common) to least.
+			if flags&OptUseCFConnectingIP != 0 {
+				if value := parseIP(r.Header.Get("CF-Connecting-IP")); value != nil {
+					r.RemoteAddr = value.String()
+					goto nexthandler
+				}
+			}
+
 			if flags&OptUseXRealIP != 0 {
-				value := parseIP(r.Header.Get(xRealIP))
-				if value != nil {
+				if value := parseIP(r.Header.Get(xRealIP)); value != nil {
 					r.RemoteAddr = value.String()
 					goto nexthandler
 				}
 			}
 
 			if flags&OptUseTrueClientIP != 0 {
-				value := parseIP(r.Header.Get(trueClientIP))
-				if value != nil {
+				if value := parseIP(r.Header.Get(trueClientIP)); value != nil {
 					r.RemoteAddr = value.String()
 					goto nexthandler
 				}
 			}
 
 			if flags&OptUseXForwardedFor != 0 {
-				value, valid := rip.parseForwardedFor(r.Header.Get(xForwardedFor))
-				if valid && value != "" {
+				if value, valid := rip.parseForwardedFor(r.Header.Get(xForwardedFor)); valid && value != "" {
 					r.RemoteAddr = value
 					goto nexthandler
 				}
