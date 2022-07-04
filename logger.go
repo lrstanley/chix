@@ -41,19 +41,36 @@ func AddLogHandler(h LogHandler) {
 func UseStructuredLogger(logger log.Interface) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			logEntry := logger.WithField("src", "http")
+			bfields := log.Fields{}
+			bfields["src"] = "http"
 
 			// RequestID middleware must be loaded before this is loaded into
 			// the chain.
 			if id := middleware.GetReqID(r.Context()); id != "" {
-				logEntry = logEntry.WithField("request_id", id)
+				bfields["rid"] = id
+			}
+
+			if ray := r.Header.Get("CF-Ray"); ray != "" {
+				bfields["ray_id"] = ray
+			}
+
+			if country := r.Header.Get("CF-IPCountry"); country != "" {
+				bfields["country"] = country
 			}
 
 			wrappedWriter := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
+			bfields["ip"] = r.RemoteAddr
+			bfields["host"] = r.Host
+			bfields["proto"] = r.Proto
+			bfields["method"] = r.Method
+			bfields["ua"] = r.Header.Get("User-Agent")
+			bfields["bytes_in"] = r.Header.Get("Content-Length")
+
+			logEntry := logger.WithFields(bfields)
 			start := time.Now()
 			defer func() {
-				finish := time.Now()
+				finish := time.Since(start)
 
 				// If log handlers were provided, and they returned a map,
 				// then we'll use that to add additional fields to the log
@@ -68,17 +85,10 @@ func UseStructuredLogger(logger log.Interface) func(next http.Handler) http.Hand
 				}
 
 				logEntry.WithFields(log.Fields{
-					"remote_ip":   r.RemoteAddr,
-					"host":        r.Host,
-					"proto":       r.Proto,
-					"method":      r.Method,
-					"path":        r.URL.Path,
-					"user_agent":  r.Header.Get("User-Agent"),
-					"status":      wrappedWriter.Status(),
-					"duration_ms": float64(finish.Sub(start).Nanoseconds()) / 1000000.0,
-					"bytes_in":    r.Header.Get("Content-Length"),
+					"code":        wrappedWriter.Status(),
+					"duration_ms": finish.Milliseconds(),
 					"bytes_out":   wrappedWriter.BytesWritten(),
-				}).Info("handled request")
+				}).Info(r.URL.RequestURI())
 			}()
 
 			next.ServeHTTP(wrappedWriter, r.WithContext(log.NewContext(r.Context(), logEntry)))
