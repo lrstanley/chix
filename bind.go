@@ -19,6 +19,10 @@ var (
 	// this, or provide your own. Make sure it is set before Bind is called.
 	DefaultDecoder = form.NewDecoder()
 
+	// DefaultDecodeMaxMemory is the maximum amount of memory in bytes that will be
+	// used for decoding multipart/form-data requests.
+	DefaultDecodeMaxMemory int64 = 8 << 20
+
 	// DefaultValidator is the default validator used by Bind, when the provided
 	// struct to the Bind() call doesn't implement Validatable. Set this to nil
 	// to disable validation using go-playground/validator.
@@ -60,6 +64,11 @@ func Bind(w http.ResponseWriter, r *http.Request, v any) (ok bool) {
 			dec := json.NewDecoder(r.Body)
 			defer r.Body.Close()
 			err = dec.Decode(v)
+		} else if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+			err = r.ParseMultipartForm(DefaultDecodeMaxMemory)
+			if err == nil {
+				err = DefaultDecoder.Decode(v, r.MultipartForm.Value)
+			}
 		} else {
 			err = DefaultDecoder.Decode(v, r.PostForm)
 		}
