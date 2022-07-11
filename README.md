@@ -1,5 +1,6 @@
 <!-- template:begin:header -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
+
 <p align="center">chix -- helper middleware and functionality for go-chi/chi</p>
 <p align="center">
   <a href="https://github.com/lrstanley/chix/tags">
