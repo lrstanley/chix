@@ -227,7 +227,7 @@ func parseIP(ip string) net.IP {
 // the IP checking may be incorrect.
 func UsePrivateIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if ok, _ := bogon.Is(r.RemoteAddr); ok {
+		if ok, _ := bogon.Is(sanitizeIP(r.RemoteAddr)); ok {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -242,12 +242,13 @@ func UsePrivateIP(next http.Handler) http.Handler {
 // registered after UseRealIP, otherwise the stored IP may be incorrect.
 func UseContextIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
-		if err != nil || ip == "" {
-			ip = r.RemoteAddr
-		}
-
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextIP, parseIP(ip))))
+		next.ServeHTTP(w, r.WithContext(
+			context.WithValue(
+				r.Context(),
+				contextIP,
+				parseIP(sanitizeIP(r.RemoteAddr)),
+			),
+		))
 	})
 }
 
@@ -259,4 +260,12 @@ func GetContextIP(ctx context.Context) net.IP {
 	}
 
 	return nil
+}
+
+func sanitizeIP(input string) (ip string) {
+	ip, _, err := net.SplitHostPort(strings.TrimSpace(input))
+	if err != nil || ip == "" {
+		ip = input
+	}
+	return ip
 }
