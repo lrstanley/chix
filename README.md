@@ -48,11 +48,7 @@
 <!-- do not edit anything in this "template" block, its auto-generated -->
 ## :link: Table of Contents
 
-  - [Usage](#gear-usage)
-  - [Features](#sparkles-features)
-  - [Support &amp; Assistance](#raising_hand_man-support--assistance)
-  - [Contributing](#handshake-contributing)
-  - [License](#balance_scale-license)
+  - []()
 <!-- template:end:toc -->
 
 ## :gear: Usage
