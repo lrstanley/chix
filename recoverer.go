@@ -17,8 +17,8 @@ import (
 // through UseDebug(), a stack trace will be printed to stderr, otherwise to
 // standard structured logging.
 //
-// NOTE: This middleware should be loaded after logging/request-id/etc middleware,
-// but before the handlers that may panic.
+// NOTE: This middleware should be loaded after logging/request-id/use-debug, etc
+// middleware, but before the handlers that may panic.
 func Recoverer(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
