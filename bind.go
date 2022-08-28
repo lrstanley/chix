@@ -46,10 +46,11 @@ type Validatable interface {
 // At this time the only supported content-types are application/json,
 // application/x-www-form-urlencoded, as well as GET parameters.
 //
-// If validation fails, Bind will respond with an HTTP 400 Bad Request, using
-// Error().
-func Bind(w http.ResponseWriter, r *http.Request, v any) (ok bool) {
-	var err, rerr error
+// If validation fails, an error that is wrapped with the necessary status code
+// will be returned (can just pass to chix.Error() and it will know the appropriate
+// HTTP code to return, and if it should be a JSON body or not).
+func Bind(r *http.Request, v any) (err error) {
+	var rerr error
 
 	if err = r.ParseForm(); err != nil {
 		rerr = fmt.Errorf("error parsing %s parameters, invalid request", r.Method)
@@ -73,8 +74,7 @@ func Bind(w http.ResponseWriter, r *http.Request, v any) (ok bool) {
 			err = DefaultDecoder.Decode(v, r.PostForm)
 		}
 	default:
-		_ = Error(w, r, WrapError(fmt.Errorf("unsupported method %s", r.Method), http.StatusBadRequest))
-		return false
+		return WrapError(fmt.Errorf("unsupported method %s", r.Method), http.StatusBadRequest)
 	}
 	if err != nil {
 		rerr = fmt.Errorf("error decoding %s request into required format (%T): validate request parameters", r.Method, v)
@@ -82,17 +82,15 @@ func Bind(w http.ResponseWriter, r *http.Request, v any) (ok bool) {
 
 handle:
 	if err != nil {
-		_ = Error(w, r, WrapError(rerr, http.StatusBadRequest))
-		return false
+		return WrapError(rerr, http.StatusBadRequest)
 	}
 
 	if v, ok := v.(Validatable); ok {
 		if err = v.Validate(); err != nil {
-			_ = Error(w, r, WrapError(err, http.StatusBadRequest))
-			return false
+			return WrapError(err, http.StatusBadRequest)
 		}
 
-		return true
+		return nil
 	}
 
 	if DefaultValidator != nil {
@@ -102,12 +100,11 @@ handle:
 			}
 
 			// for _, err := range err.(validator.ValidationErrors) {}
-			_ = Error(w, r, WrapError(err, http.StatusBadRequest))
-			return false
+			return WrapError(err, http.StatusBadRequest)
 		}
 
-		return true
+		return nil
 	}
 
-	return true
+	return nil
 }
