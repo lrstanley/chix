@@ -72,9 +72,10 @@ func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authK
 	})
 
 	h := &AuthHandler[Ident, ID]{
-		Auth:  auth,
-		Ident: new(Ident),
-		ID:    new(ID),
+		Auth:         auth,
+		Ident:        new(Ident),
+		ID:           new(ID),
+		errorHandler: Error,
 	}
 
 	router := chi.NewRouter()
@@ -95,10 +96,18 @@ func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authK
 
 // AuthHandler wraps all authentication logic.
 type AuthHandler[Ident any, ID comparable] struct {
-	Auth   AuthService[Ident, ID]
-	Ident  *Ident
-	ID     *ID
-	router http.Handler
+	Auth         AuthService[Ident, ID]
+	Ident        *Ident
+	ID           *ID
+	router       http.Handler
+	errorHandler ErrorHandler
+}
+
+// SetErrorHandler sets the error handler for AuthHandler. This error handler will
+// only be used for errors that occur within the callback process, NOT for middleware,
+// in which chix.Error() will still be used.
+func (h *AuthHandler[Ident, ID]) SetErrorHandler(handler ErrorHandler) {
+	h.errorHandler = handler
 }
 
 // ServeHTTP implements http.Handler.
@@ -123,18 +132,18 @@ func (h *AuthHandler[Ident, ID]) provider(w http.ResponseWriter, r *http.Request
 func (h *AuthHandler[Ident, ID]) callback(w http.ResponseWriter, r *http.Request) {
 	guser, err := gothic.CompleteUserAuth(w, gothic.GetContextWithProvider(r, chi.URLParam(r, "provider")))
 	if err != nil {
-		Error(w, r, err)
+		h.errorHandler(w, r, err)
 		return
 	}
 
 	id, err := h.Auth.Set(r.Context(), &guser)
 	if err != nil {
-		Error(w, r, err)
+		h.errorHandler(w, r, err)
 		return
 	}
 
 	if err := gothic.StoreInSession(authSessionKey, fmt.Sprintf("%v", id), r, w); err != nil {
-		Error(w, r, err)
+		h.errorHandler(w, r, err)
 		return
 	}
 	SecureRedirect(w, r, http.StatusTemporaryRedirect, "/")
