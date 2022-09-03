@@ -44,7 +44,7 @@ type AuthService[Ident any, ID comparable] interface {
 // encryption key, if set, must be either 16, 24, or 32 bytes to select
 // AES-128, AES-192, or AES-256 modes. Provide the keys in hexidecimal string
 // format. The following link can be used to generate a random key:
-//   - https://go.dev/play/p/YWAxxuyMazO
+//   - https://go.dev/play/p/xwcJmQNU8ku
 //
 // The following endpoints are implemented:
 //   - GET: <mount>/self - returns the current user authentication info.
