@@ -41,6 +41,48 @@ func UseRealIPDefault(next http.Handler) http.Handler {
 	return UseRealIP(nil, OptDefaultTrust)(next)
 }
 
+// UseRealIPCLIOpts is a convenience function that wraps RealIP, with support for
+// configuring the middleware via CLI flags. You can pass in an array that contains
+// a mix of different supported headers, "cloudflare", "*" (or "any", "all") to
+// trust anything, "local" (or "localhost", "bogon", "internal") for bogon IPs,
+// and anything else gets passed in as allowed CIDRs.
+//
+// If no options are passed in, the default will use the same as chix.UseRealIPDefault
+// (OptTrustBogon and OptUseXForwardedFor).
+func UseRealIPCLIOpts(options []string) func(next http.Handler) http.Handler {
+	if len(options) == 0 {
+		return UseRealIPDefault
+	}
+
+	var flags RealIPOptions
+	var proxies []string
+
+	for _, option := range options {
+		switch strings.ToLower(option) {
+		case "cloudflare":
+			flags |= OptUseCFConnectingIP
+		case "x-forwarded-for":
+			flags |= OptUseXForwardedFor
+		case "x-real-ip":
+			flags |= OptUseXRealIP
+		case "true-client-ip":
+			flags |= OptUseTrueClientIP
+		case "*", "any", "all":
+			flags |= OptTrustAny
+		case "local", "localhost", "bogon", "internal":
+			flags |= OptTrustBogon
+		default:
+			proxies = append(proxies, option)
+		}
+	}
+
+	if flags == 0 {
+		flags = OptDefaultTrust
+	}
+
+	return UseRealIP(proxies, flags)
+}
+
 // UseRealIP is a middleware that allows passing the real IP address of the client
 // only if the request headers that include an override, come from a trusted
 // proxy. Pass an optional list of trusted proxies to trust, as well as
