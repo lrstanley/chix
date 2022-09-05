@@ -28,7 +28,7 @@ var (
 	ErrAPIVersionMismatch = errors.New("server and client version mismatch")
 	ErrNoAPIKeys          = errors.New("no api keys provided")
 	ErrRealIPNoOpts       = errors.New("realip: no options specified")
-	ErrRealIPNoSource     = errors.New("realip: no real IP source specified (OptUseXForwardedFor, OptUseXRealIP, or OptUseTrueClientIP)")
+	ErrRealIPNoSource     = errors.New("realip: no real IP source specified (OptUseXForwardedFor, OptUseXRealIP, or OptUseTrueClientIP, OptUseCFConnectingIP)")
 	ErrRealIPNoTrusted    = errors.New("realip: no trusted proxies or bogon IPs specified")
 	ErrAuthNotFound       = errors.New("auth: no authentiation found")
 	ErrAuthMissingRole    = errors.New("auth: missing necessary role")

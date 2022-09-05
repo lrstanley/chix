@@ -59,8 +59,8 @@ func UseRealIPCLIOpts(options []string) func(next http.Handler) http.Handler {
 
 	for _, option := range options {
 		switch strings.ToLower(option) {
-		case "cloudflare":
-			flags |= OptUseCFConnectingIP
+		case "cloudflare", "cf-connecting-ip":
+			flags |= OptTrustCloudflare | OptUseCFConnectingIP
 		case "x-forwarded-for":
 			flags |= OptUseXForwardedFor
 		case "x-real-ip":
