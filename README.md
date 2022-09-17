@@ -1,7 +1,13 @@
+<!-- template:define:options
+{
+  "nodescription": true
+}
+-->
+![logo](https://liam.sh/-/gh/svg/lrstanley/chix?icon=logos%3Ago&icon.height=65&layout=left&font=1.1&icon.color=rgba%280%2C+0%2C+0%2C+1%29)
+
 <!-- template:begin:header -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
 
-<p align="center">chix -- helper middleware and functionality for go-chi/chi</p>
 <p align="center">
   <a href="https://github.com/lrstanley/chix/tags">
     <img title="Latest Semver Tag" src="https://img.shields.io/github/v/tag/lrstanley/chix?style=flat-square">
