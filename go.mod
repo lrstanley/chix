@@ -6,7 +6,7 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-playground/form/v4 v4.2.0
-	github.com/go-playground/validator/v10 v10.11.0
+	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/lrstanley/go-bogon v0.0.0-20220507183221-362a880cf97b
 	github.com/markbates/goth v1.73.0
