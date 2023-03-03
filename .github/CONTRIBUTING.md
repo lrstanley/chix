@@ -112,6 +112,6 @@ Below are a few guidelines if you would like to contribute:
 [discussions]: https://github.com/lrstanley/chix/discussions
 [issues]: https://github.com/lrstanley/chix/issues/new/choose
 [license]: https://github.com/lrstanley/chix/blob/master/LICENSE
-[pull-requests]: https://github.com/lrstanley/chix/issues/new/choose
+[pull-requests]: https://github.com/lrstanley/chix/pulls?q=is%3Aopen+is%3Apr
 [security]: https://github.com/lrstanley/chix/security/policy
 [support]: https://github.com/lrstanley/chix/blob/master/.github/SUPPORT.md
