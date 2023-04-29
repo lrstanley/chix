@@ -8,16 +8,24 @@ import (
 	"net/http"
 )
 
-// APIVersionMatch is a middleware that checks if the request has the correct
-// API version provided in the DefaultAPIVersionHeader.
+// Deprecated: APIVersionMatch is deprecated, and will be removed in a future release.
+// Please use UseAPIVersionMatch instead.
 func APIVersionMatch(version string) func(next http.Handler) http.Handler {
+	return UseAPIVersionMatch(version)
+}
+
+// UseAPIVersionMatch is a middleware that checks if the request has the correct
+// API version provided in the DefaultAPIVersionHeader.
+func UseAPIVersionMatch(version string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			clientVersion := r.Header.Get(DefaultAPIVersionHeader)
 			if clientVersion == "" {
 				_ = Error(w, r, WrapError(ErrAPIVersionMissing, http.StatusPreconditionFailed))
 				return
-			} else if clientVersion != version {
+			}
+
+			if clientVersion != version {
 				_ = Error(w, r, WrapError(ErrAPIVersionMismatch, http.StatusPreconditionFailed))
 				return
 			}
