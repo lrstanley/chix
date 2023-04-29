@@ -74,7 +74,7 @@ func UseAPIKeyRequired(keys []string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			Error(w, r, WrapError(ErrInvalidAPIKey, http.StatusUnauthorized))
+			Error(w, r, WrapError(ErrAPIKeyInvalid, http.StatusUnauthorized))
 		})
 	}
 }

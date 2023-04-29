@@ -23,10 +23,11 @@ var (
 	DefaultMaskError = true
 
 	ErrAccessDenied       = errors.New("access denied")
-	ErrInvalidAPIKey      = errors.New("invalid api key provided")
+	ErrAPIKeyInvalid      = errors.New("invalid api key provided")
+	ErrAPIKeyMissing      = errors.New("api key not specified")
+	ErrNoAPIKeys          = errors.New("no api keys provided in initialization")
 	ErrAPIVersionMissing  = errors.New("api version not specified")
 	ErrAPIVersionMismatch = errors.New("server and client version mismatch")
-	ErrNoAPIKeys          = errors.New("no api keys provided")
 	ErrRealIPNoOpts       = errors.New("realip: no options specified")
 	ErrRealIPNoSource     = errors.New("realip: no real IP source specified (OptUseXForwardedFor, OptUseXRealIP, or OptUseTrueClientIP, OptUseCFConnectingIP)")
 	ErrRealIPNoTrusted    = errors.New("realip: no trusted proxies or bogon IPs specified")
