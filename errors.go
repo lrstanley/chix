@@ -156,12 +156,12 @@ func (e ErrWithStatusCode) Unwrap() error {
 
 // UnwrapError is a helper function for retrieving the underlying error and status
 // code from an error that has been wrapped.
-func UnwrapError(err error) (error, int) {
+func UnwrapError(err error) (resultErr error, statusCode int) {
 	if err == nil {
 		return nil, 0
 	}
 
-	statusCode := http.StatusInternalServerError
+	statusCode = http.StatusInternalServerError
 
 	// If the user has wrapped the error, this will override any other code
 	// we have.
