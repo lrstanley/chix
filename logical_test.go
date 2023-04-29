@@ -11,15 +11,12 @@ import (
 )
 
 func TestUseIf(t *testing.T) {
-	type args struct {
-		cond bool
-	}
 	tests := []struct {
 		name string
-		args args
+		cond bool
 	}{
-		{name: "true", args: args{cond: true}},
-		{name: "false", args: args{cond: false}},
+		{name: "true", cond: true},
+		{name: "false", cond: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -32,15 +29,15 @@ func TestUseIf(t *testing.T) {
 				return next
 			}
 
-			handler := UseIf(tt.args.cond, setCalledHandler)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			handler := UseIf(tt.cond, setCalledHandler)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 			handler.ServeHTTP(httptest.NewRecorder(), req)
 
-			if tt.args.cond && !called {
-				t.Errorf("UseIf() = %v, want %v", called, tt.args.cond)
+			if tt.cond && !called {
+				t.Errorf("UseIf() = %v, want %v", called, tt.cond)
 			}
 
-			if !tt.args.cond && called {
-				t.Errorf("UseIf() = %v, want %v", called, tt.args.cond)
+			if !tt.cond && called {
+				t.Errorf("UseIf() = %v, want %v", called, tt.cond)
 			}
 		})
 	}
