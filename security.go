@@ -5,6 +5,7 @@
 package chix
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -16,11 +17,11 @@ func init() {
 
 var (
 	securityExpires time.Time
-	robotsTxt       = []byte("User-agent: *\nDisallow: /api\nAllow: /\n")
+	robotsTxt       = "User-agent: *\nDisallow: %s\nAllow: /\n"
 )
 
 // UseRobotsTxt returns a handler that serves a robots.txt file. When custom
-// is empty, the default robots.txt is served (disallow /api*, allow /).
+// is empty, the default robots.txt is served (disallow <DefaultAPIPrefix>*, allow /).
 //
 // You can also use go:embed to embed the robots.txt file into your binary.
 // Example:
@@ -46,7 +47,7 @@ func UseRobotsTxt(custom string) func(next http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 			if custom == "" {
-				w.Write([]byte(robotsTxt))
+				fmt.Fprintf(w, robotsTxt, DefaultAPIPrefix)
 				return
 			}
 
