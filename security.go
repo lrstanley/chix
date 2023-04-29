@@ -19,10 +19,6 @@ var (
 	robotsTxt       = []byte("User-agent: *\nDisallow: /api\nAllow: /\n")
 )
 
-func httpOK(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-}
-
 // UseRobotsTxt returns a handler that serves a robots.txt file. When custom
 // is empty, the default robots.txt is served (disallow /api*, allow /).
 //

@@ -12,17 +12,27 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// Recoverer is a middleware that recovers from panics, and returns a chix.Error
+// Deprecated: Recoverer is deprecated, and will be removed in a future release.
+// Please use UseRecoverer instead.
+func Recoverer(next http.Handler) http.Handler {
+	return UseRecoverer(next)
+}
+
+// UseRecoverer is a middleware that recovers from panics, and returns a chix.Error
 // with HTTP 500 status (Internal Server Error) if possible. If debug is enabled,
 // through UseDebug(), a stack trace will be printed to stderr, otherwise to
 // standard structured logging.
 //
 // NOTE: This middleware should be loaded after logging/request-id/use-debug, etc
 // middleware, but before the handlers that may panic.
-func Recoverer(next http.Handler) http.Handler {
+func UseRecoverer(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if rvr := recover(); rvr != nil && rvr != http.ErrAbortHandler {
+			if rvr := recover(); rvr != nil {
+				if rvr == http.ErrAbortHandler {
+					panic(rvr)
+				}
+
 				err := fmt.Errorf("panic recovered: %v", rvr)
 				if IsDebug(r) {
 					middleware.PrintPrettyStack(rvr)
