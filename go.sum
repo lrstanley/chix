@@ -166,8 +166,6 @@ github.com/lestrrat-go/httpcc v1.0.0/go.mod h1:tGS/u00Vh5N6FHNkExqGGNId8e0Big+++
 github.com/lestrrat-go/iter v1.0.1/go.mod h1:zIdgO1mRKhn8l9vrZJZz9TUMMFbQbLeTsbqPDrJ/OJc=
 github.com/lestrrat-go/jwx v1.2.21/go.mod h1:9cfxnOH7G1gN75CaJP2hKGcxFEx5sPh1abRIA/ZJVh4=
 github.com/lestrrat-go/option v1.0.0/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
-github.com/lrstanley/go-bogon v0.0.0-20230303230239-e33fb462737f h1:WSJxaG/KB7uCOdKxO+bQQBGEcBbIP/La2BNAUSiatfM=
-github.com/lrstanley/go-bogon v0.0.0-20230303230239-e33fb462737f/go.mod h1:1H1sGTRZ05IO1sQHKLAQQ34v19KrQeYg2Ix9HgJuFXQ=
 github.com/lrstanley/go-bogon v1.0.0 h1:EhFN3Bu+59u9g8n+xWCzRlbSfNKqAbhsjzW8lcMrG0g=
 github.com/lrstanley/go-bogon v1.0.0/go.mod h1:1H1sGTRZ05IO1sQHKLAQQ34v19KrQeYg2Ix9HgJuFXQ=
 github.com/markbates/going v1.0.0/go.mod h1:I6mnB4BPnEeqo85ynXIx1ZFLLbtiLHNXVgWeFO9OGOA=
