@@ -51,7 +51,8 @@ var (
 
 // UseAPIKeyRequired is a middleware that checks if the request has the correct
 // API keys provided in the DefaultAPIKeyHeader header. Panics if no keys
-// are provided.
+// are provided. Returns http.StatusUnauthorized if an invalid key is provided,
+// and http.StatusPreconditionFailed if no key header is provided.
 func UseAPIKeyRequired(keys []string) func(next http.Handler) http.Handler {
 	if len(keys) == 0 {
 		panic(ErrNoAPIKeys)
@@ -59,11 +60,18 @@ func UseAPIKeyRequired(keys []string) func(next http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			providedKey := r.Header.Get(DefaultAPIKeyHeader)
+
 			for _, key := range keys {
-				if r.Header.Get(DefaultAPIKeyHeader) == key {
+				if providedKey == key {
 					next.ServeHTTP(w, r)
 					return
 				}
+			}
+
+			if providedKey == "" {
+				_ = Error(w, r, WrapError(ErrAPIKeyMissing, http.StatusPreconditionFailed))
+				return
 			}
 
 			Error(w, r, WrapError(ErrInvalidAPIKey, http.StatusUnauthorized))
