@@ -32,7 +32,7 @@ var (
 	)
 	metricHTTPBytes = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_response_bytes",
+			Name: "http_response_bytes_total",
 			Help: "Total number of bytes sent in response to HTTP requests.",
 		},
 		[]string{"method", "path", "status"},

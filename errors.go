@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+//nolint:lll
 var (
 	// DefaultMaskError is a flag that can be used to mask errors in the
 	// default error handler. This only impacts errors from 500 onwards.
@@ -108,7 +109,7 @@ func defaultErrorHandler(w http.ResponseWriter, r *http.Request, err error) bool
 		id = "-"
 	}
 
-	if statusCode >= 500 {
+	if statusCode >= http.StatusInternalServerError {
 		Log(r).WithError(err)
 
 		if !IsDebug(r) && DefaultMaskError {
@@ -157,7 +158,7 @@ func (e ErrWithStatusCode) Unwrap() error {
 
 // UnwrapError is a helper function for retrieving the underlying error and status
 // code from an error that has been wrapped.
-func UnwrapError(err error) (resultErr error, statusCode int) {
+func UnwrapError(err error) (resultErr error, statusCode int) { //nolint:revive
 	if err == nil {
 		return nil, 0
 	}

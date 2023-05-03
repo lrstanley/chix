@@ -24,13 +24,13 @@ func testJSONMarshalEqual[T any](t *testing.T, input T, body io.ReadCloser, shou
 		return false
 	}
 
-	if err := json.Unmarshal(inBytes, &in); err != nil {
+	if err = json.Unmarshal(inBytes, &in); err != nil {
 		t.Errorf("error unmarshaling input data: %v", err)
 		return false
 	}
 
 	dec := json.NewDecoder(body)
-	if err := dec.Decode(&out); err != nil {
+	if err = dec.Decode(&out); err != nil {
 		t.Errorf("error decoding response body: %v", err)
 		return false
 	}

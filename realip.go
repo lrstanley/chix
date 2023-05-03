@@ -14,8 +14,6 @@ import (
 	"github.com/lrstanley/go-bogon"
 )
 
-// TODO: add tests, e.g. https://github.com/go-chi/chi/blob/master/middleware/realip_test.go
-
 const (
 	OptTrustBogon        RealIPOptions = 1 << iota // Trust bogon IP ranges (private IP ranges).
 	OptTrustAny                                    // Trust any proxy (DON'T USE THIS!).
@@ -198,7 +196,6 @@ func UseRealIP(trusted []string, flags RealIPOptions) func(next http.Handler) ht
 
 		nexthandler:
 			next.ServeHTTP(w, r)
-			return
 		})
 	}
 }

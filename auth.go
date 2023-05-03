@@ -52,7 +52,10 @@ type AuthService[Ident any, ID comparable] interface {
 //   - GET: <mount>/providers/{provider} - initiates the provider authentication.
 //   - GET: <mount>/providers/{provider}/callback - redirect target from the provider.
 //   - GET: <mount>/logout - logs the user out.
-func NewAuthHandler[Ident any, ID comparable](auth AuthService[Ident, ID], authKey, encryptKey string) *AuthHandler[Ident, ID] {
+func NewAuthHandler[Ident any, ID comparable](
+	auth AuthService[Ident, ID],
+	authKey, encryptKey string,
+) *AuthHandler[Ident, ID] {
 	authKeyBytes, err := hex.DecodeString(authKey)
 	if err != nil {
 		panic(err)
@@ -142,7 +145,7 @@ func (h *AuthHandler[Ident, ID]) callback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := gothic.StoreInSession(authSessionKey, fmt.Sprintf("%v", id), r, w); err != nil {
+	if err = gothic.StoreInSession(authSessionKey, fmt.Sprintf("%v", id), r, w); err != nil {
 		h.errorHandler(w, r, err)
 		return
 	}
@@ -314,7 +317,7 @@ func (h *AuthHandler[Ident, ID]) RoleRequired(role string) func(http.Handler) ht
 // loaded, and the user is authenticated.
 func RolesFromContext(ctx context.Context) (roles AuthRoles) {
 	roles, _ = ctx.Value(contextAuthRoles).([]string)
-	return AuthRoles(roles)
+	return roles
 }
 
 // IDFromContext returns the user ID from the request context, if any. Note that

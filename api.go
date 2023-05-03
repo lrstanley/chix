@@ -41,7 +41,7 @@ var (
 
 	// DefaultErrorHandler is the default header where we should look for the
 	// API key.
-	DefaultAPIKeyHeader = "X-Api-Key"
+	DefaultAPIKeyHeader = "X-Api-Key" //nolint:gosec
 
 	// DefaultAPIPrefix is the default prefix for your API. Set to an empty
 	// string to disable checks that change depending on if the request has

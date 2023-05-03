@@ -222,7 +222,9 @@ func FuzzUseRealIPCLIOpts(f *testing.F) {
 		req.RemoteAddr = "1.2.3.4:12345"
 		req.Header.Set("X-Forwarded-For", data)
 
-		handler := UseRealIPCLIOpts([]string{"x-forwarded-for", "all"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler := UseRealIPCLIOpts(
+			[]string{"x-forwarded-for", "all"},
+		)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_ = parseIP(sanitizeIP(r.RemoteAddr))
 		}))
 
@@ -258,10 +260,30 @@ func TestUsePrivateIP(t *testing.T) {
 		remoteAddr string
 		statusCode int
 	}{
-		{name: "ipv4:private", allowed: true, remoteAddr: "10.1.2.3:12345", statusCode: http.StatusOK},
-		{name: "ipv4:not-private", allowed: false, remoteAddr: "1.1.1.1:12345", statusCode: http.StatusForbidden},
-		{name: "ipv6:private", allowed: true, remoteAddr: "[::1]:12345", statusCode: http.StatusOK},
-		{name: "ipv6:not-private", allowed: false, remoteAddr: "[2001:4860:4860::8888]:12345", statusCode: http.StatusForbidden},
+		{
+			name:       "ipv4:private",
+			allowed:    true,
+			remoteAddr: "10.1.2.3:12345",
+			statusCode: http.StatusOK,
+		},
+		{
+			name:       "ipv4:not-private",
+			allowed:    false,
+			remoteAddr: "1.1.1.1:12345",
+			statusCode: http.StatusForbidden,
+		},
+		{
+			name:       "ipv6:private",
+			allowed:    true,
+			remoteAddr: "[::1]:12345",
+			statusCode: http.StatusOK,
+		},
+		{
+			name:       "ipv6:not-private",
+			allowed:    false,
+			remoteAddr: "[2001:4860:4860::8888]:12345",
+			statusCode: http.StatusForbidden,
+		},
 	}
 
 	for _, tt := range tests {

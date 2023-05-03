@@ -11,12 +11,8 @@ import (
 	"time"
 )
 
-func init() {
-	securityExpires = time.Now()
-}
-
 var (
-	securityExpires time.Time
+	securityExpires = time.Now()
 	robotsTxt       = "User-agent: *\nDisallow: %s\nAllow: /\n"
 )
 
@@ -51,7 +47,7 @@ func UseRobotsTxt(custom string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			w.Write([]byte(custom))
+			_, _ = w.Write([]byte(custom))
 		})
 	}
 }
@@ -123,7 +119,7 @@ type SecurityConfig struct {
 	Canonical []string
 }
 
-func (h *SecurityConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *SecurityConfig) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
@@ -132,32 +128,32 @@ func (h *SecurityConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			entry = "mailto:" + entry
 		}
 
-		w.Write([]byte("Contact: " + entry + "\n"))
+		_, _ = w.Write([]byte("Contact: " + entry + "\n"))
 	}
 
 	for _, entry := range h.KeyLinks {
-		w.Write([]byte("Encryption: " + entry + "\n"))
+		_, _ = w.Write([]byte("Encryption: " + entry + "\n"))
 	}
 
 	if len(h.Languages) > 0 {
-		w.Write([]byte("Preferred-Languages: " + strings.Join(h.Languages, ", ") + "\n"))
+		_, _ = w.Write([]byte("Preferred-Languages: " + strings.Join(h.Languages, ", ") + "\n"))
 	}
 
 	for _, entry := range h.Acknowledgements {
-		w.Write([]byte("Acknowledgements: " + entry + "\n"))
+		_, _ = w.Write([]byte("Acknowledgements: " + entry + "\n"))
 	}
 
 	for _, entry := range h.Policies {
-		w.Write([]byte("Policy: " + entry + "\n"))
+		_, _ = w.Write([]byte("Policy: " + entry + "\n"))
 	}
 
 	for _, entry := range h.Canonical {
-		w.Write([]byte("Canonical: " + entry + "\n"))
+		_, _ = w.Write([]byte("Canonical: " + entry + "\n"))
 	}
 
 	if !h.Expires.IsZero() {
-		w.Write([]byte("Expires: " + h.Expires.Format(time.RFC3339) + "\n"))
+		_, _ = w.Write([]byte("Expires: " + h.Expires.Format(time.RFC3339) + "\n"))
 	} else if h.ExpiresIn > 0 {
-		w.Write([]byte("Expires: " + securityExpires.Add(h.ExpiresIn).Format(time.RFC3339) + "\n"))
+		_, _ = w.Write([]byte("Expires: " + securityExpires.Add(h.ExpiresIn).Format(time.RFC3339) + "\n"))
 	}
 }

@@ -61,16 +61,17 @@ func Bind(r *http.Request, v any) (err error) {
 	case http.MethodGet, http.MethodHead:
 		err = DefaultDecoder.Decode(v, r.Form)
 	case http.MethodPost, http.MethodPut, http.MethodPatch:
-		if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		switch {
+		case strings.HasPrefix(r.Header.Get("Content-Type"), "application/json"):
 			dec := json.NewDecoder(r.Body)
 			defer r.Body.Close()
 			err = dec.Decode(v)
-		} else if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		case strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
 			err = r.ParseMultipartForm(DefaultDecodeMaxMemory)
 			if err == nil {
 				err = DefaultDecoder.Decode(v, r.MultipartForm.Value)
 			}
-		} else {
+		default:
 			err = DefaultDecoder.Decode(v, r.PostForm)
 		}
 	default:
@@ -94,7 +95,8 @@ handle:
 	}
 
 	if DefaultValidator != nil {
-		if err := DefaultValidator.Struct(v); err != nil {
+		err = DefaultValidator.Struct(v)
+		if err != nil {
 			if _, ok := err.(*validator.InvalidValidationError); ok {
 				panic(fmt.Errorf("invalid validation error: %w", err))
 			}

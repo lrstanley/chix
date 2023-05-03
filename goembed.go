@@ -86,24 +86,25 @@ func UseStatic(ctx context.Context, config *Static) http.Handler {
 		"exe_path":    exePath,
 	}).Debug("static asset search paths")
 
-	if config.AllowLocal && cwdLocal != nil && cwdLocal.IsDir() {
+	switch {
+	case config.AllowLocal && cwdLocal != nil && cwdLocal.IsDir():
 		config.httpFS = http.Dir(config.LocalPath)
 		logger.WithField("path", config.LocalPath).Debug("registering static assets in current working directory")
-	} else if config.AllowLocal && srcLocal != nil && srcLocal.IsDir() {
+	case config.AllowLocal && srcLocal != nil && srcLocal.IsDir():
 		config.LocalPath = srcPath
 		config.httpFS = http.Dir(config.LocalPath)
 		logger.WithField("path", config.LocalPath).Debug("registering static assets in source file directory")
-	} else if config.AllowLocal && exeLocal != nil && exeLocal.IsDir() {
+	case config.AllowLocal && exeLocal != nil && exeLocal.IsDir():
 		config.LocalPath = exePath
 		config.httpFS = http.Dir(config.LocalPath)
 		logger.WithField("path", config.LocalPath).Debug("registering static assets in executable directory")
-	} else {
+	default:
 		logger.WithField("path", config.Path).Debug("registering embedded static assets")
 		config.httpFS = http.FS(config.FS)
 
 		_ = fs.WalkDir(config.FS, ".", func(path string, info fs.DirEntry, err error) error {
 			if err != nil || info.IsDir() {
-				return nil
+				return nil //nolint:nilerr
 			}
 
 			logger.Debugf("registering embedded asset: %v", path)

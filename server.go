@@ -17,6 +17,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	srvDefaultReadTimeout    = 15 * time.Second
+	srvDefaultWriteTimeout   = 15 * time.Second
+	srvDefaultMaxHeaderBytes = 1 << 20
+	srvCancelTimeout         = 10 * time.Second
+)
+
 type Runner func(ctx context.Context) error
 
 func (r Runner) Invoke(ctx context.Context) func() error {
@@ -42,15 +49,15 @@ func Run(srv *http.Server, runners ...Runner) error {
 // to externally cancel all runners and the http server.
 func RunCtx(ctx context.Context, srv *http.Server, runners ...Runner) error {
 	if srv.ReadTimeout == 0 {
-		srv.ReadTimeout = 15 * time.Second
+		srv.ReadTimeout = srvDefaultReadTimeout
 	}
 
 	if srv.WriteTimeout == 0 {
-		srv.WriteTimeout = 15 * time.Second
+		srv.WriteTimeout = srvDefaultWriteTimeout
 	}
 
 	if srv.MaxHeaderBytes == 0 {
-		srv.MaxHeaderBytes = 1 << 20
+		srv.MaxHeaderBytes = srvDefaultMaxHeaderBytes
 	}
 
 	var g *errgroup.Group
@@ -98,7 +105,7 @@ func httpServer(ctx context.Context, srv *http.Server) error {
 		return err
 	}
 
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), srvCancelTimeout)
 	defer cancel()
 
 	return srv.Shutdown(ctxTimeout)

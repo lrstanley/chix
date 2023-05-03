@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const nextURLExpiration = 86400 // 1 day.
+
 // UseNextURL is a middleware that will store the current URL provided via
 // the "next" query parameter, as a cookie in the response, for use with
 // multi-step authentication flows. This allows the user to be redirected
@@ -29,7 +31,7 @@ func UseNextURL(next http.Handler) http.Handler {
 				Name:     nextSessionKey,
 				Value:    n,
 				Path:     "/",
-				MaxAge:   86400,
+				MaxAge:   nextURLExpiration,
 				Domain:   host,
 				HttpOnly: true,
 			})
