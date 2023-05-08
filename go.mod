@@ -11,7 +11,7 @@ require (
 	github.com/lrstanley/go-bogon v1.0.0
 	github.com/markbates/goth v1.77.0
 	github.com/prometheus/client_golang v1.15.0
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.2.0
 )
 
 require (
