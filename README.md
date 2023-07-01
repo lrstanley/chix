@@ -54,7 +54,7 @@
 <!-- do not edit anything in this "template" block, its auto-generated -->
 ## :link: Table of Contents
 
-  - [Usage](#gear-usage)
+  - [⚙️ Usage](#gear-usage)
   - [Features](#sparkles-features)
   - [Related Libraries](#zap-related-libraries)
   - [Example Projects](#bulb-example-projects)
