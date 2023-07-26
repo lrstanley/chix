@@ -55,12 +55,12 @@
 ## :link: Table of Contents
 
   - [Usage](#gear-usage)
-  - [Features](#sparkles-features)
+  - [✨ Features](#sparkles-features)
   - [Related Libraries](#zap-related-libraries)
-  - [💡 Example Projects](#bulb-example-projects)
-  - [Support &amp; Assistance](#raising_hand_man-support--assistance)
+  - [Example Projects](#bulb-example-projects)
+  - [🙋‍♂️ Support &amp; Assistance](#raising_hand_man-support--assistance)
   - [Contributing](#handshake-contributing)
-  - [⚖️ License](#balance_scale-license)
+  - [License](#balance_scale-license)
 <!-- template:end:toc -->
 
 ## :gear: Usage
