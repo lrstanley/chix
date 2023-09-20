@@ -45,9 +45,64 @@ func Run(srv *http.Server, runners ...Runner) error {
 	return RunCtx(context.Background(), srv, runners...)
 }
 
-// RunCtx is the same as Run, but with the provided context that can be used
-// to externally cancel all runners and the http server.
+// RunTLS is the same as Run, but allows for TLS to be used.
+func RunTLS(srv *http.Server, certFile, keyFile string, runners ...Runner) error {
+	return RunTLSContext(context.Background(), srv, certFile, keyFile, runners...)
+}
+
+// Deprecated: Use [RunContext] instead.
 func RunCtx(ctx context.Context, srv *http.Server, runners ...Runner) error {
+	return RunContext(ctx, srv, runners...)
+}
+
+// RunContext is the same as Run, but with the provided context that can be used
+// to externally cancel all runners and the http server.
+func RunContext(ctx context.Context, srv *http.Server, runners ...Runner) error {
+	serverSetDefaults(srv)
+
+	var g *errgroup.Group
+	g, ctx = errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return signalListener(ctx)
+	})
+
+	g.Go(func() error {
+		return httpServer(ctx, srv, "", "")
+	})
+
+	for _, runner := range runners {
+		g.Go(runner.Invoke(ctx))
+	}
+
+	return g.Wait()
+}
+
+// RunTLSContext is the same as Run, but with the provided context that can be used
+// to externally cancel all runners and the http server, and also allows for TLS
+// to be used.
+func RunTLSContext(ctx context.Context, srv *http.Server, certFile, keyFile string, runners ...Runner) error {
+	serverSetDefaults(srv)
+
+	var g *errgroup.Group
+	g, ctx = errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return signalListener(ctx)
+	})
+
+	g.Go(func() error {
+		return httpServer(ctx, srv, certFile, keyFile)
+	})
+
+	for _, runner := range runners {
+		g.Go(runner.Invoke(ctx))
+	}
+
+	return g.Wait()
+}
+
+func serverSetDefaults(srv *http.Server) {
 	if srv.ReadTimeout == 0 {
 		srv.ReadTimeout = srvDefaultReadTimeout
 	}
@@ -59,23 +114,6 @@ func RunCtx(ctx context.Context, srv *http.Server, runners ...Runner) error {
 	if srv.MaxHeaderBytes == 0 {
 		srv.MaxHeaderBytes = srvDefaultMaxHeaderBytes
 	}
-
-	var g *errgroup.Group
-	g, ctx = errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		return signalListener(ctx)
-	})
-
-	g.Go(func() error {
-		return httpServer(ctx, srv)
-	})
-
-	for _, runner := range runners {
-		g.Go(runner.Invoke(ctx))
-	}
-
-	return g.Wait()
 }
 
 func signalListener(ctx context.Context) error {
@@ -90,10 +128,18 @@ func signalListener(ctx context.Context) error {
 	}
 }
 
-func httpServer(ctx context.Context, srv *http.Server) error {
+func httpServer(ctx context.Context, srv *http.Server, certFile, keyFile string) error {
 	ch := make(chan error)
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		var err error
+
+		if certFile != "" && keyFile != "" {
+			err = srv.ListenAndServeTLS(certFile, keyFile)
+		} else {
+			err = srv.ListenAndServe()
+		}
+
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			ch <- err
 		}
 		close(ch)
