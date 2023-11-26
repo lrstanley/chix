@@ -37,6 +37,8 @@ func (r Runner) Invoke(ctx context.Context) func() error {
 func RunnerInterval(name string, r Runner, frequency time.Duration, runImmediately, exitOnError bool) Runner {
 	return func(ctx context.Context) error {
 		logEntry := log.FromContext(ctx).WithField("runner", name)
+		ctx = log.NewContext(ctx, logEntry)
+
 		var lastRun time.Time
 
 		if runImmediately {
