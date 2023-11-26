@@ -45,7 +45,7 @@ func RunnerInterval(name string, r Runner, frequency time.Duration, runImmediate
 			lastRun = time.Now()
 			logEntry.Info("invoking runner")
 			if err := r(ctx); err != nil {
-				logEntry.WithDuration(time.Since(lastRun)).Error("invocation failed")
+				logEntry.WithError(err).WithDuration(time.Since(lastRun)).Error("invocation failed")
 				return err
 			}
 			logEntry.WithDuration(time.Since(lastRun)).Info("invocation complete")
@@ -62,7 +62,7 @@ func RunnerInterval(name string, r Runner, frequency time.Duration, runImmediate
 				lastRun = time.Now()
 				logEntry.Info("invoking runner")
 				if err := r(ctx); err != nil {
-					logEntry.WithDuration(time.Since(lastRun)).Error("invocation failed")
+					logEntry.WithError(err).WithDuration(time.Since(lastRun)).Error("invocation failed")
 
 					if exitOnError {
 						return err
