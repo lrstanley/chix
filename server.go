@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/apex/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -31,6 +32,41 @@ func (r Runner) Invoke(ctx context.Context) func() error {
 		return r(ctx)
 	}
 	return fn
+}
+
+func RunnerInterval(name string, r Runner, frequency time.Duration, runImmediately, exitOnError bool) Runner {
+	return func(ctx context.Context) error {
+		if runImmediately {
+			log.FromContext(ctx).WithField("runner", name).Info("invoking runner")
+			if err := r(ctx); err != nil {
+				log.FromContext(ctx).WithField("runner", name).Error("invocation failed")
+				return err
+			}
+			log.FromContext(ctx).WithField("runner", name).Info("invocation complete")
+		}
+
+		ticker := time.NewTicker(frequency)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-ticker.C:
+				log.FromContext(ctx).WithField("runner", name).Info("invoking runner")
+				if err := r(ctx); err != nil {
+					log.FromContext(ctx).WithField("runner", name).Error("invocation failed")
+
+					if exitOnError {
+						return err
+					}
+
+					log.FromContext(ctx).WithField("runner", name).Info("invocation complete")
+					continue
+				}
+			}
+		}
+	}
 }
 
 // Run runs the provided http server, and listens for any termination signals
