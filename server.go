@@ -36,13 +36,17 @@ func (r Runner) Invoke(ctx context.Context) func() error {
 
 func RunnerInterval(name string, r Runner, frequency time.Duration, runImmediately, exitOnError bool) Runner {
 	return func(ctx context.Context) error {
+		logEntry := log.FromContext(ctx).WithField("runner", name)
+		var lastRun time.Time
+
 		if runImmediately {
-			log.FromContext(ctx).WithField("runner", name).Info("invoking runner")
+			lastRun = time.Now()
+			logEntry.Info("invoking runner")
 			if err := r(ctx); err != nil {
-				log.FromContext(ctx).WithField("runner", name).Error("invocation failed")
+				logEntry.WithDuration(time.Since(lastRun)).Error("invocation failed")
 				return err
 			}
-			log.FromContext(ctx).WithField("runner", name).Info("invocation complete")
+			logEntry.WithDuration(time.Since(lastRun)).Info("invocation complete")
 		}
 
 		ticker := time.NewTicker(frequency)
@@ -53,15 +57,16 @@ func RunnerInterval(name string, r Runner, frequency time.Duration, runImmediate
 			case <-ctx.Done():
 				return nil
 			case <-ticker.C:
-				log.FromContext(ctx).WithField("runner", name).Info("invoking runner")
+				lastRun = time.Now()
+				logEntry.Info("invoking runner")
 				if err := r(ctx); err != nil {
-					log.FromContext(ctx).WithField("runner", name).Error("invocation failed")
+					logEntry.WithDuration(time.Since(lastRun)).Error("invocation failed")
 
 					if exitOnError {
 						return err
 					}
 
-					log.FromContext(ctx).WithField("runner", name).Info("invocation complete")
+					logEntry.WithDuration(time.Since(lastRun)).Info("invocation complete")
 					continue
 				}
 			}
