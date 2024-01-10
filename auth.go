@@ -91,7 +91,10 @@ func NewAuthHandler[Ident any, ID comparable](
 
 	AddLogHandler(func(r *http.Request) M {
 		id := h.getIDFromSession(r)
-		return M{"user_id": id}
+		if id == nil {
+			return M{"user_id": nil}
+		}
+		return M{"user_id": *id}
 	})
 
 	return h
