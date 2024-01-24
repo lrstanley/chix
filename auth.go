@@ -303,6 +303,18 @@ func (h *BasicAuthHandler[Ident]) self(w http.ResponseWriter, r *http.Request) {
 	JSON(w, r, http.StatusOK, M{"auth": IdentFromContext[Ident](r.Context())})
 }
 
+// OverrideContextAuth overrides the authentication information in the request,
+// and returns a new context with the updated information. This is useful for
+// when you want to temporarily override the authentication information in the
+// request, such as when you want to impersonate another user, or for mocking in
+// tests.
+func OverrideContextAuth[Ident any, ID comparable](parent context.Context, id ID, ident *Ident, roles []string) context.Context {
+	ctx := context.WithValue(parent, contextAuth, ident)
+	ctx = context.WithValue(ctx, contextAuthID, id)
+	ctx = context.WithValue(ctx, contextAuthRoles, roles)
+	return ctx
+}
+
 // UseAuthContext adds the user authentication info to the request context, using
 // the cookie session information. If used more than once in the same request
 // middleware chain, it will be a no-op.
