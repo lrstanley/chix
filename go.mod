@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/apex/log v1.9.0
-	github.com/go-chi/chi/v5 v5.0.12
+	github.com/go-chi/chi/v5 v5.0.14
 	github.com/go-playground/form/v4 v4.2.1
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/gorilla/sessions v1.3.0
