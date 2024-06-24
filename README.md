@@ -22,6 +22,7 @@
     <img title="GitHub Workflow Status (test @ master)" src="https://img.shields.io/github/actions/workflow/status/lrstanley/chix/test.yml?branch=master&label=test&style=flat-square">
   </a>
 
+
   <a href="https://codecov.io/gh/lrstanley/chix">
     <img title="Code Coverage" src="https://img.shields.io/codecov/c/github/lrstanley/chix/master?style=flat-square">
   </a>
@@ -158,7 +159,7 @@ this library, or how you might want to structure your applications.
 ```
 MIT License
 
-Copyright (c) 2022 Liam Stanley <me@liamstanley.io>
+Copyright (c) 2022 Liam Stanley <liam@liam.sh>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
