@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/sessions v1.4.0
 	github.com/lrstanley/go-bogon v1.0.0
 	github.com/markbates/goth v1.80.0
-	github.com/prometheus/client_golang v1.20.2
+	github.com/prometheus/client_golang v1.20.3
 	golang.org/x/sync v0.8.0
 )
 
