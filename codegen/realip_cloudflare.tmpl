@@ -1,0 +1,22 @@
+// Copyright (c) Liam Stanley <liam@liam.sh>. All rights reserved. Use of
+// this source code is governed by the MIT license that can be found in
+// the LICENSE file.
+//
+// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.
+
+package chix
+
+import (
+	"net"
+
+	"github.com/lrstanley/go-bogon"
+)
+
+// cloudflareRanges returns the list of Cloudflare IP ranges.
+func cloudflareRanges() []*net.IPNet {
+	return []*net.IPNet{
+		{{- range . }}
+			bogon.MustCIDR("{{ . }}"),
+		{{- end }}
+	}
+}
