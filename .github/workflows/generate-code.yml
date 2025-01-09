@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./codegen/generate.sh
-      - uses: EndBug/add-and-commit@1bad3abcf0d6ec49a5857d124b0bfb52dc7bb081
+      - uses: EndBug/add-and-commit@af39be11779239242ac2d3e47148221973246379
         with:
           message: "chore(gen): codegen changes"
           commit: "--signoff"
