@@ -16,7 +16,7 @@ jobs:
           go-version: latest
       - uses: actions/checkout@v4
       - run: make generate
-      - uses: EndBug/add-and-commit@af39be11779239242ac2d3e47148221973246379
+      - uses: EndBug/add-and-commit@a604fba70a846a0ea59e6040ef8a4a4f95015772
         with:
           message: "chore(gen): codegen changes"
           commit: "--signoff"
