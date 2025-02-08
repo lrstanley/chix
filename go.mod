@@ -2,11 +2,11 @@ module github.com/lrstanley/chix
 
 go 1.23
 
-toolchain go1.23.5
+toolchain go1.23.6
 
 require (
 	github.com/apex/log v1.9.0
-	github.com/go-chi/chi/v5 v5.2.0
+	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-playground/form/v4 v4.2.1
 	github.com/go-playground/validator/v10 v10.24.0
 	github.com/gorilla/sessions v1.4.0
