@@ -45,6 +45,8 @@ func initGothStore(authKey, encryptKey string) {
 		authStore.Options.Path = "/"
 		authStore.Options.HttpOnly = true
 		authStore.Options.Secure = DefaultCookieSecure
+		authStore.Options.SameSite = http.SameSiteLaxMode
+		authStore.Options.Partitioned = true
 		gothic.Store = authStore
 	})
 }
