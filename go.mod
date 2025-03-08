@@ -1,6 +1,6 @@
 module github.com/lrstanley/chix
 
-go 1.23
+go 1.23.0
 
 toolchain go1.24.1
 
@@ -13,7 +13,7 @@ require (
 	github.com/lrstanley/go-bogon v1.0.0
 	github.com/markbates/goth v1.80.0
 	github.com/prometheus/client_golang v1.21.1
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.12.0
 )
 
 require (
