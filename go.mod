@@ -2,7 +2,7 @@ module github.com/lrstanley/chix
 
 go 1.23
 
-toolchain go1.24.0
+toolchain go1.24.1
 
 require (
 	github.com/apex/log v1.9.0
@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/sessions v1.4.0
 	github.com/lrstanley/go-bogon v1.0.0
 	github.com/markbates/goth v1.80.0
-	github.com/prometheus/client_golang v1.21.0
+	github.com/prometheus/client_golang v1.21.1
 	golang.org/x/sync v0.11.0
 )
 
