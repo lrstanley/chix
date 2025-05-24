@@ -145,7 +145,13 @@ func RunTLSContext(ctx context.Context, srv *http.Server, certFile, keyFile stri
 	return g.Wait()
 }
 
+var SetServerDefaults = true
+
 func serverSetDefaults(srv *http.Server) {
+	if !SetServerDefaults {
+		return
+	}
+
 	if srv.ReadTimeout == 0 {
 		srv.ReadTimeout = srvDefaultReadTimeout
 	}
