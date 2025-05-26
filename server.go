@@ -171,6 +171,7 @@ func signalListener(ctx context.Context) error {
 
 	select {
 	case sig := <-quit:
+		log.FromContext(ctx).WithField("signal", sig).Warn("received signal, starting graceful termination")
 		return fmt.Errorf("received signal: %v", sig)
 	case <-ctx.Done():
 		return nil
