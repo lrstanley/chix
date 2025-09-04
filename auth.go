@@ -20,9 +20,6 @@ import (
 )
 
 var (
-	// DefaultCookieSecure allows enabling the secure flag on the session cookie.
-	DefaultCookieSecure = false
-
 	// DefaultCookieMaxAge is the max age for the session cookie.
 	DefaulltCookieMaxAge = 30 * 86400
 
@@ -46,7 +43,6 @@ func initGothStore(authKey, encryptKey string) {
 		authStore.MaxAge(DefaulltCookieMaxAge)
 		authStore.Options.Path = "/"
 		authStore.Options.HttpOnly = true
-		authStore.Options.Secure = DefaultCookieSecure
 		authStore.Options.SameSite = http.SameSiteLaxMode
 		authStore.Options.Partitioned = true
 		if CookieStoreHook != nil {
