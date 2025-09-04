@@ -50,11 +50,11 @@ func UseStructuredLogger(logger log.Interface) func(next http.Handler) http.Hand
 				bfields["rid"] = id
 			}
 
-			if ray := r.Header.Get("CF-Ray"); ray != "" {
+			if ray := r.Header.Get("Cf-Ray"); ray != "" {
 				bfields["ray_id"] = ray
 			}
 
-			if country := r.Header.Get("CF-IPCountry"); country != "" {
+			if country := r.Header.Get("Cf-Ipcountry"); country != "" {
 				bfields["country"] = country
 			}
 

@@ -5,6 +5,7 @@
 package chix
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -29,7 +30,7 @@ func UseRecoverer(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rvr := recover(); rvr != nil {
-				if rvr == http.ErrAbortHandler {
+				if e, ok := rvr.(error); ok && errors.Is(e, http.ErrAbortHandler) {
 					panic(rvr)
 				}
 

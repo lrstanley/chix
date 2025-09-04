@@ -167,7 +167,7 @@ func UseRealIP(trusted []string, flags RealIPOptions) func(next http.Handler) ht
 
 			// Parse enabled headers by most specific (and common) to least.
 			if flags&OptUseCFConnectingIP != 0 {
-				if value := parseIP(r.Header.Get("CF-Connecting-IP")); value != nil {
+				if value := parseIP(r.Header.Get("Cf-Connecting-Ip")); value != nil {
 					r.RemoteAddr = value.String()
 					goto nexthandler
 				}

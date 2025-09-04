@@ -6,6 +6,7 @@ package chix
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -97,7 +98,8 @@ handle:
 	if DefaultValidator != nil {
 		err = DefaultValidator.Struct(v)
 		if err != nil {
-			if _, ok := err.(*validator.InvalidValidationError); ok {
+			invalidValidationError := &validator.InvalidValidationError{}
+			if errors.As(err, &invalidValidationError) {
 				panic(fmt.Errorf("invalid validation error: %w", err))
 			}
 

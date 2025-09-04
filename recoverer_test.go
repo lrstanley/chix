@@ -5,6 +5,7 @@
 package chix
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,8 +28,13 @@ func TestUseRecoverer(t *testing.T) {
 
 func TestUseRecovererAbort(t *testing.T) {
 	defer func() {
-		if rvr := recover(); rvr != http.ErrAbortHandler {
+		if rvr := recover(); rvr != nil {
+			if e, ok := rvr.(error); ok && errors.Is(e, http.ErrAbortHandler) {
+				return
+			}
 			t.Fatalf("expected panic of type http.ErrAbortHandler, got %v", rvr)
+		} else {
+			t.Fatalf("expected panic of type http.ErrAbortHandler, got nil")
 		}
 	}()
 
