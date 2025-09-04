@@ -27,6 +27,8 @@ var (
 	DefaulltCookieMaxAge = 30 * 86400
 
 	gothInit sync.Once
+
+	CookieStoreHook = func(_ *sessions.CookieStore) {}
 )
 
 func initGothStore(authKey, encryptKey string) {
@@ -47,6 +49,9 @@ func initGothStore(authKey, encryptKey string) {
 		authStore.Options.Secure = DefaultCookieSecure
 		authStore.Options.SameSite = http.SameSiteLaxMode
 		authStore.Options.Partitioned = true
+		if CookieStoreHook != nil {
+			CookieStoreHook(authStore)
+		}
 		gothic.Store = authStore
 	})
 }
