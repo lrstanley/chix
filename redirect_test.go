@@ -34,7 +34,7 @@ func TestUseNextURL_WithSecureRedirectOrNext_MultiRequests(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "https://example.com/login?next=%2Fafter", http.NoBody)
 
 	res := httptest.NewRecorder()
-	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("foo"))
 	})).ServeHTTP(res, req)
 

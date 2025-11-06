@@ -31,8 +31,8 @@ import (
 // 	}
 // }
 
-var testHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("bar"))
+var testHandler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	_, _ = w.Write([]byte("bar"))
 })
 
 var allHeaders = []string{

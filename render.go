@@ -84,11 +84,10 @@ func CSVIter(w http.ResponseWriter, r *http.Request, status int, it iter.Seq2[[]
 	enc := csv.NewWriter(buf)
 
 	for row, err := range it {
-		if err != nil {
-			ErrorWithCode(w, r, http.StatusInternalServerError, err)
-			return
+		if err == nil {
+			err = enc.Write(row)
 		}
-		if err := enc.Write(row); err != nil {
+		if err != nil {
 			ErrorWithCode(w, r, http.StatusInternalServerError, err)
 			return
 		}

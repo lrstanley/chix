@@ -241,7 +241,7 @@ func (c *LogConfig) GetRequestScheme(r *http.Request) string {
 	if r.TLS != nil || r.URL.Scheme == "https" { //nolint:goconst
 		return "https"
 	}
-	return "http"
+	return "http" //nolint:goconst
 }
 
 // GetRequestURL returns the full request URL, including the scheme, host, path, and query parameters,
