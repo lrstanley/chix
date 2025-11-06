@@ -16,10 +16,30 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+// ErrorVisibility can be used to control the visibility of an error.
+type ErrorVisibility int
+
+const (
+	// ErrorUnknown is the default visibility for an error, usually when the error
+	// originates outside of the chix package/[ErrorWithCode] functions, and usage
+	// of [ResolvedError]. This will be calculated based on all child errors, and
+	// the status code, to determine visibility.
+	ErrorUnknown ErrorVisibility = iota
+	// ErrorPublic is a visibility that indicates the error is safe to be exposed
+	// to the client.
+	ErrorPublic
+	// ErrorMasked is a visibility that indicates the error is not safe to be exposed
+	// to the client, as it may contain sensitive information.
+	ErrorMasked
+)
+
 // ExposableError is an interface that can be implemented by errors that can
 // indicate if they are safe to be exposed to the client. If an error implements
 // this interface, it will be used to determine if the error will be masked or
 // not.
+//
+// You can also use [ResolvedError] errors, or error resolvers to control visibility
+// dynamically.
 type ExposableError interface {
 	Public() bool
 }
@@ -27,13 +47,10 @@ type ExposableError interface {
 // IsExposableError returns true if the error is safe to be exposed to the client.
 // If the error implements the [ExposableError] interface, it will be used to
 // determine if the error is public. Otherwise, it will return false. Accounts for
-// [ResolvedError]s, and will return the [Public] field.
+// [ResolvedError], and will return the [ExposableError.Public] result.
 func IsExposableError(err error) bool {
 	if err == nil {
 		return false
-	}
-	if rerr, ok := IsResolvedError(err); ok {
-		return rerr.Public
 	}
 	if ee, ok := err.(ExposableError); ok {
 		return !ee.Public()
@@ -54,13 +71,50 @@ type ResolvedError struct {
 	Errs []error `json:"errors"`
 
 	// StatusCode is the status code that will be used, instead of the original status
-	// code. If not provided, the original status code will be used.
+	// code. If not provided, the original status code will be used. If the status code
+	// is <500 (and no error resolvers or [ExposableError] implementations are used),
+	// the error will be marked as public. If this is not desired, you can use [Error]
+	// directly instead, and provide your own [ResolvedError] with the
+	// [ResolvedError.Visibility] field set control visibility.
 	StatusCode int `json:"status_code"`
 
-	// Public is a flag that indicates if the error is public (can be rendered safely).
-	// If false, the error will not be logged, and a generic error message will be
-	// returned.
-	Public bool `json:"public"`
+	// Visibility is a flag that indicates the visibility of the error. If [ErrorPublic],
+	// the error message will be exposed directly to the client. If [ErrorMasked],
+	// the error message will be masked, and a generic error message will be returned.
+	Visibility ErrorVisibility `json:"visibility"`
+}
+
+// Public returns true if the error is public. This is calculated in the following order:
+//
+//  1. If the [ResolvedError.Visibility] field is set, and is [ErrorPublic].
+//  2. If the [ResolvedError.Err] field implements the [ExposableError] interface, and returns true.
+//  3. If all of the [ResolvedError.Errs] fields implement the [ExposableError] interface, and return true.
+//  4. If the [ResolvedError.StatusCode] is 1-499 (inclusive).
+//
+// If none of the above conditions are met, the error will be marked as masked.
+func (e *ResolvedError) Public() bool {
+	if e.Visibility != ErrorUnknown {
+		return e.Visibility == ErrorPublic
+	}
+
+	if e.Err != nil {
+		if IsExposableError(e.Err) {
+			return true
+		}
+	}
+
+	for _, err := range e.Errs {
+		if !IsExposableError(err) {
+			goto usestatus
+		}
+	}
+
+	if len(e.Errs) > 0 {
+		return true
+	}
+
+usestatus:
+	return e.StatusCode > 0 && e.StatusCode < 500
 }
 
 func (e *ResolvedError) Error() string {
@@ -74,6 +128,7 @@ func (e *ResolvedError) Unwrap() []error {
 	return e.Errs
 }
 
+// LogAttrs returns the attributes that will be added to the log entry for the error.
 func (e *ResolvedError) LogAttrs() []slog.Attr {
 	if e == nil {
 		return []slog.Attr{slog.Bool("error", false)}
@@ -105,8 +160,20 @@ func IsResolvedError(err error) (resolved *ResolvedError, ok bool) {
 // or adjusts the status code based on if it's caused by incorrect user input, etc.
 // Resolvers are useful in situations where you want to return a different error when
 // the error contains a database-related error (like duplicate key already exists,
-// returning a 400 by default), for example. If the function returns nil, it will
-// continue through the chain.
+// returning a 400 by default), for example, without having to litter your code in
+// multiple places. If the function returns nil, it will continue through the chain
+// of resolvers.
+//
+// Example:
+//
+//	func ErrorResolver(oerr *chix.ResolvedError) *chix.ResolvedError {
+//		if oerr.Err != nil {
+//			if errors.Is(oerr.Err, sql.ErrNoRows) {
+//				return &chix.ResolvedError{Err: errors.New("resource not found"), StatusCode: http.StatusNotFound, Visibility: chix.ErrorPublic}
+//			}
+//		}
+//		return oerr
+//	}
 type ErrorResolverFn func(oerr *ResolvedError) *ResolvedError
 
 // ErrorHandler is a function that, depending on the input, will either
@@ -137,16 +204,13 @@ func Error(w http.ResponseWriter, r *http.Request, errs ...error) {
 		panic("no error provided")
 	}
 
-	resolved := &ResolvedError{
-		Public: true,
-	}
+	resolved := &ResolvedError{}
 
 	if len(errs) == 1 {
 		if rerr, ok := IsResolvedError(errs[0]); ok {
 			resolved = rerr
 		} else {
 			resolved.Err = errs[0]
-			resolved.Public = IsExposableError(errs[0])
 		}
 	} else {
 		for _, err := range errs {
@@ -155,16 +219,10 @@ func Error(w http.ResponseWriter, r *http.Request, errs ...error) {
 				if rerr.StatusCode > resolved.StatusCode {
 					resolved.StatusCode = rerr.StatusCode
 				}
-				if !rerr.Public {
-					resolved.Public = false
-				}
 				continue
 			}
 
 			resolved.Errs = append(resolved.Errs, err)
-			if resolved.Public && !IsExposableError(err) {
-				resolved.Public = false
-			}
 		}
 	}
 
@@ -216,21 +274,18 @@ func IfError(w http.ResponseWriter, r *http.Request, errs ...error) bool {
 
 // ErrorWithCode is a helper function that allows you to set a specific status code
 // for an error. It will wrap the error in a [ResolvedError] and pass it to the
-// [Error] function. If the status code is <500, the error will be marked as public.
+// [Error] function. If the status code is <500 (and no error resolvers or
+// [ExposableError] implementations are used), the error will be marked as public.
 // If this is not desired, you can use [Error] directly instead, and provide your
 // own [ResolvedError] with the [Public] field set to false.
 func ErrorWithCode(w http.ResponseWriter, r *http.Request, statusCode int, errs ...error) {
 	switch {
 	case len(errs) == 0:
-		Error(w, r, &ResolvedError{
-			Err:        errors.New(http.StatusText(statusCode)),
-			StatusCode: statusCode,
-			Public:     statusCode < 500,
-		})
+		Error(w, r, &ResolvedError{Err: errors.New(http.StatusText(statusCode)), StatusCode: statusCode})
 	case len(errs) == 1:
-		Error(w, r, &ResolvedError{Err: errs[0], StatusCode: statusCode, Public: statusCode < 500})
+		Error(w, r, &ResolvedError{Err: errs[0], StatusCode: statusCode})
 	default:
-		Error(w, r, &ResolvedError{Errs: errs, StatusCode: statusCode, Public: statusCode < 500})
+		Error(w, r, &ResolvedError{Errs: errs, StatusCode: statusCode})
 	}
 }
 
@@ -256,7 +311,7 @@ func DefaultErrorHandler(w http.ResponseWriter, r *http.Request, rerr *ResolvedE
 	statusText := http.StatusText(rerr.StatusCode)
 	id := GetRequestIDOrHeader(r.Context(), r)
 
-	if !cfg.GetMaskPrivateErrors() || (!rerr.Public && (!IsDebug(r.Context()) || cfg.GetMaskErrorsDebug())) {
+	if !cfg.GetMaskPrivateErrors() || !rerr.Public() {
 		rerr.Err = errors.New("internal server error")
 		rerr.Errs = nil
 	}
@@ -274,7 +329,15 @@ func DefaultErrorHandler(w http.ResponseWriter, r *http.Request, rerr *ResolvedE
 	}
 
 	if len(rerr.Errs) > 0 {
-		http.Error(w, fmt.Sprintf("multiple errors occurred (%s, id: %s):\n%s", statusText, id, strings.Join(errorStringSlice(rerr.Errs), "\n")), rerr.StatusCode)
+		http.Error(
+			w, fmt.Sprintf(
+				"multiple errors occurred (%s, id: %s):\n\n%s",
+				statusText,
+				id,
+				strings.Join(errorStringSlice(rerr.Errs), "\n\n"),
+			),
+			rerr.StatusCode,
+		)
 		return
 	}
 

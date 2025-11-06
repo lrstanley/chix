@@ -15,3 +15,6 @@ test:
 	gofmt -e -s -w .
 	go vet .
 	go test -v ./...
+
+release:
+	./.github/release.sh

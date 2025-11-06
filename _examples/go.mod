@@ -2,10 +2,6 @@ module github.com/lrstanley/chix/v2/_examples
 
 go 1.25.3
 
-replace github.com/lrstanley/chix/v2 => ../
-
-replace github.com/lrstanley/chix/xauth/v2 => ../xauth
-
 require (
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/lrstanley/chix/v2 v2.0.0-alpha.6

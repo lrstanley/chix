@@ -59,7 +59,7 @@ func DefaultRequestDecoder() RequestDecoder {
 			return &ResolvedError{
 				Err:        err,
 				StatusCode: http.StatusBadRequest,
-				Public:     true,
+				Visibility: ErrorPublic,
 			}
 		}
 
@@ -99,7 +99,7 @@ func DefaultRequestValidator() RequestValidator {
 				return &ResolvedError{
 					Err:        err,
 					StatusCode: http.StatusBadRequest,
-					Public:     true,
+					Visibility: ErrorPublic,
 				}
 			}
 			return nil
@@ -112,7 +112,6 @@ func DefaultRequestValidator() RequestValidator {
 				return &ResolvedError{
 					Err:        err,
 					StatusCode: http.StatusInternalServerError,
-					Public:     false,
 				}
 			}
 
@@ -128,14 +127,14 @@ func DefaultRequestValidator() RequestValidator {
 				return &ResolvedError{
 					Errs:       errs,
 					StatusCode: http.StatusBadRequest,
-					Public:     true,
+					Visibility: ErrorPublic,
 				}
 			}
 
 			return &ResolvedError{
 				Err:        err,
 				StatusCode: http.StatusBadRequest,
-				Public:     true,
+				Visibility: ErrorPublic,
 			}
 		}
 
@@ -194,7 +193,7 @@ func Bind(r *http.Request, v any) (err error) {
 		return &ResolvedError{
 			Err:        err,
 			StatusCode: http.StatusBadRequest,
-			Public:     true,
+			Visibility: ErrorPublic,
 		}
 	}
 

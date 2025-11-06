@@ -19,7 +19,6 @@ type Config struct {
 	apiBasePath string
 
 	maskPrivateErrors bool
-	maskErrorsDebug   bool
 	errorResolvers    []ErrorResolverFn
 	errorHandler      ErrorHandler
 
@@ -39,7 +38,6 @@ func NewConfig() *Config {
 		apiBasePath: "/",
 
 		maskPrivateErrors: true,
-		maskErrorsDebug:   false,
 		errorResolvers:    nil,
 		errorHandler:      DefaultErrorHandler,
 
@@ -60,7 +58,6 @@ func (c *Config) Clone() *Config {
 		apiBasePath: c.apiBasePath,
 
 		maskPrivateErrors: c.maskPrivateErrors,
-		maskErrorsDebug:   c.maskErrorsDebug,
 		errorResolvers:    c.errorResolvers,
 		errorHandler:      c.errorHandler,
 
@@ -112,28 +109,13 @@ func (c *Config) SetMaskPrivateErrors(enabled bool) *Config {
 	return nc
 }
 
-// GetMaskErrorsDebug returns the configured flag for masking errors when debug is
-// enabled.
-func (c *Config) GetMaskErrorsDebug() bool {
-	return c.maskErrorsDebug
-}
-
-// SetMaskErrorsDebug sets the flag for masking errors when debug is enabled. If
-// enabled, errors will still be masked like normal when debugging is enabled.
-// Defaults to false.
-func (c *Config) SetMaskErrorsDebug(enabled bool) *Config {
-	nc := c.Clone()
-	nc.maskErrorsDebug = enabled
-	return nc
-}
-
 // GetErrorResolvers returns the configured error resolvers.
 func (c *Config) GetErrorResolvers() []ErrorResolverFn {
 	return c.errorResolvers
 }
 
 // SetErrorResolvers sets the error resolvers.
-func (c *Config) SetErrorResolvers(resolvers []ErrorResolverFn) *Config {
+func (c *Config) SetErrorResolvers(resolvers ...ErrorResolverFn) *Config {
 	nc := c.Clone()
 	nc.errorResolvers = resolvers
 	return nc
