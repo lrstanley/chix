@@ -312,7 +312,7 @@ func DefaultErrorHandler(w http.ResponseWriter, r *http.Request, rerr *ResolvedE
 	id := GetRequestIDOrHeader(r.Context(), r)
 
 	if !cfg.GetMaskPrivateErrors() || !rerr.Public() {
-		rerr.Err = errors.New("internal server error")
+		rerr.Err = errors.New(http.StatusText(rerr.StatusCode))
 		rerr.Errs = nil
 	}
 
