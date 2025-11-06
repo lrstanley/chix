@@ -57,6 +57,10 @@ if ! git diff --cached --quiet >/dev/null; then
 fi
 
 for BASE in $MODULES; do
+    if grep -q "_examples" <<<"$BASE"; then
+        continue
+    fi
+
     MODULE_NAME="$(basename "$BASE")"
     echo "--> tagging ${MODULE_NAME}/${NEXT}"
     if git ls-remote --tags origin | grep -q "/${MODULE_NAME}/${NEXT}$"; then
