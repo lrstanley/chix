@@ -8,7 +8,7 @@ replace github.com/lrstanley/chix/xauth/v2 => ../xauth
 
 require (
 	github.com/go-chi/chi/v5 v5.2.3
-	github.com/lrstanley/chix/v2 v2.0.0-00010101000000-000000000000
+	github.com/lrstanley/chix/v2 v2.0.0-alpha.5
 	github.com/lrstanley/chix/xauth/v2 v2.0.0-00010101000000-000000000000
 	github.com/lrstanley/clix/v2 v2.0.0-alpha.13
 	github.com/markbates/goth v1.82.0
