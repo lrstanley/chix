@@ -15,4 +15,5 @@ dist
 vendor/*
 bin
 **/.env
+go.work*
 AGENTS.md
