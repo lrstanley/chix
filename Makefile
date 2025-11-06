@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := generate
+.DEFAULT_GOAL := prepare
 
 license:
 	curl -sL https://liam.sh/-/gh/g/license-header.sh | bash -s
@@ -7,7 +7,7 @@ up:
 	go get -u ./... && go mod tidy
 	go get -u -t ./... && go mod tidy
 
-generate: license
+prepare: license
 	go generate -x ./...
 	go test -v ./...
 

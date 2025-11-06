@@ -22,7 +22,7 @@ var testsRealIP = []struct {
 		args:       []string{"x-forwarded-for", "local"},
 		headers:    map[string]string{},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:x-forwarded-for:bogon:invalid-remote-addr",
@@ -43,28 +43,28 @@ var testsRealIP = []struct {
 		args:       []string{"cloudflare"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
 		remoteAddr: "173.245.48.0:12345",
-		wantRealIP: "173.245.48.0:12345",
+		wantRealIP: "173.245.48.0",
 	},
 	{
 		name:       "ipv4:x-forwarded-for:cloudflare:untrusted",
 		args:       []string{"cloudflare"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:cf-connecting-ip:cloudflare:untrusted",
 		args:       []string{"cloudflare"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:x-forwarded-for-invalid:bogon:untrusted",
 		args:       []string{"x-forwarded-for", "local"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.999"},
 		remoteAddr: "10.1.2.3:12345",
-		wantRealIP: "10.1.2.3:12345",
+		wantRealIP: "10.1.2.3",
 	},
 	{
 		name:       "ipv6:x-forwarded-for:bogon:trusted-different-protocol",
@@ -85,28 +85,28 @@ var testsRealIP = []struct {
 		args:       []string{"x-forwarded-for", "local"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
 		remoteAddr: "[2607:f8b0:4002:c00::8a]:12345",
-		wantRealIP: "[2607:f8b0:4002:c00::8a]:12345",
+		wantRealIP: "2607:f8b0:4002:c00::8a",
 	},
 	{
 		name:       "ipv6:x-forwarded-for:bogon:untrusted-2",
 		args:       []string{"x-forwarded-for", "local"},
 		headers:    map[string]string{"X-Forwarded-For": "2607:f8b0:4002:c00::8b"},
 		remoteAddr: "[2607:f8b0:4002:c00::8a]:12345",
-		wantRealIP: "[2607:f8b0:4002:c00::8a]:12345",
+		wantRealIP: "2607:f8b0:4002:c00::8a",
 	},
 	{
 		name:       "ipv4:x-forwarded-for:bogon:untrusted",
 		args:       []string{"x-forwarded-for", "local"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:x-forwarded-for:custom-cidr:untrusted",
 		args:       []string{"x-forwarded-for", "8.8.8.8/32"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:x-forwarded-for:custom-cidr-multiple-1:trusted",
@@ -127,7 +127,7 @@ var testsRealIP = []struct {
 		args:       []string{"x-forwarded-for", "8.0.0.0/8", "9.0.0.0/8"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
 		remoteAddr: "10.1.2.3:12345",
-		wantRealIP: "10.1.2.3:12345",
+		wantRealIP: "10.1.2.3",
 	},
 	{
 		name:       "ipv4:x-forwarded-for:custom-cidr:trusted",
@@ -153,7 +153,7 @@ var testsRealIP = []struct {
 	{
 		name:       "ipv4:x-forwarded-for:all:trusted",
 		args:       []string{"x-forwarded-for", "all"},
-		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
+		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1,1.1.1.2"},
 		remoteAddr: "8.8.8.8:12345",
 		wantRealIP: "1.1.1.1",
 	},
@@ -176,14 +176,14 @@ var testsRealIP = []struct {
 		args:       []string{"x-forwarded-for", "local"},
 		headers:    map[string]string{"X-Real-IP": "1.1.1.1"},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:x-real-ip:bogon:untrusted",
 		args:       []string{"x-real-ip", "local"},
 		headers:    map[string]string{"X-Real-IP": "1.1.1.1"},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:x-real-ip:bogon:trusted",
@@ -197,7 +197,7 @@ var testsRealIP = []struct {
 		args:       []string{"true-client-ip", "local"},
 		headers:    map[string]string{"True-Client-IP": "1.1.1.1"},
 		remoteAddr: "1.2.3.4:12345",
-		wantRealIP: "1.2.3.4:12345",
+		wantRealIP: "1.2.3.4",
 	},
 	{
 		name:       "ipv4:true-client-ip:bogon:trusted",
@@ -208,7 +208,7 @@ var testsRealIP = []struct {
 	},
 }
 
-func FuzzUseRealIPCLIOpts(f *testing.F) {
+func FuzzUseRealStringOpts(f *testing.F) {
 	for _, tt := range testsRealIP {
 		for _, v := range tt.headers {
 			f.Add(v)
@@ -217,14 +217,14 @@ func FuzzUseRealIPCLIOpts(f *testing.F) {
 		f.Add(tt.remoteAddr)
 	}
 
-	f.Fuzz(func(t *testing.T, data string) {
+	f.Fuzz(func(_ *testing.T, data string) {
 		req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 		req.RemoteAddr = "1.2.3.4:12345"
 		req.Header.Set("X-Forwarded-For", data)
 
-		handler := UseRealIPCLIOpts(
+		handler := UseRealIPStringOpts(
 			[]string{"x-forwarded-for", "all"},
-		)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			_ = parseIP(sanitizeIP(r.RemoteAddr))
 		}))
 
@@ -232,7 +232,7 @@ func FuzzUseRealIPCLIOpts(f *testing.F) {
 	})
 }
 
-func TestUseRealIPCLIOpts(t *testing.T) {
+func TestUseRealStringOpts(t *testing.T) {
 	for _, tt := range testsRealIP {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
@@ -242,9 +242,9 @@ func TestUseRealIPCLIOpts(t *testing.T) {
 				req.Header.Set(k, v)
 			}
 
-			handler := UseRealIPCLIOpts(tt.args)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := UseRealIPStringOpts(tt.args)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 				if r.RemoteAddr != tt.wantRealIP {
-					t.Errorf("UseRealIPCLIOpts() = %v, want %v", r.RemoteAddr, tt.wantRealIP)
+					t.Errorf("UseRealStringOpts() = %v, want %v", r.RemoteAddr, tt.wantRealIP)
 				}
 			}))
 
@@ -254,6 +254,8 @@ func TestUseRealIPCLIOpts(t *testing.T) {
 }
 
 func TestUsePrivateIP(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		allowed    bool
@@ -279,6 +281,12 @@ func TestUsePrivateIP(t *testing.T) {
 			statusCode: http.StatusOK,
 		},
 		{
+			name:       "ipv6:private-2",
+			allowed:    true,
+			remoteAddr: "[fe80::200:f8ff:fe21:67cf]:12345",
+			statusCode: http.StatusOK,
+		},
+		{
 			name:       "ipv6:not-private",
 			allowed:    false,
 			remoteAddr: "[2001:4860:4860::8888]:12345",
@@ -288,11 +296,13 @@ func TestUsePrivateIP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 			req.RemoteAddr = tt.remoteAddr
 
 			// Also test UseContextIP/GetContextIP.
-			handler := UseContextIP(UsePrivateIP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := UseContextIP()(UsePrivateIP()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if !tt.allowed {
 					t.Errorf("UsePrivateIP() = %v but allowed (true), want %v", r.RemoteAddr, tt.allowed)
 				}

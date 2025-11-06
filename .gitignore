@@ -11,6 +11,8 @@ dist
 *.yml
 *.yaml
 !/.github/**
+!/testdata/**
 vendor/*
 bin
 **/.env
+AGENTS.md
