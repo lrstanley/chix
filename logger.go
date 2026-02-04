@@ -197,9 +197,6 @@ type LogConfig struct {
 func (c *LogConfig) Validate() error {
 	defaultConfig := DefaultLogConfig()
 
-	if c == nil {
-		c = defaultConfig
-	}
 	if len(c.BodyContentTypes) == 0 {
 		c.BodyContentTypes = defaultConfig.BodyContentTypes
 	}
@@ -342,6 +339,9 @@ func (e *logEntry) Reset() {
 //   - [SetLogError] can be used to set the error that occurred in the request/response,
 //     though if using [Error] and similar functions, this is automatically done for you.
 func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //nolint:gocognit
+	if config == nil {
+		config = DefaultLogConfig()
+	}
 	if err := config.Validate(); err != nil {
 		panic(err)
 	}
