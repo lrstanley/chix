@@ -15,6 +15,45 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func TestStaticConfig_Validate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil-config", func(t *testing.T) {
+		t.Parallel()
+		var c *StaticConfig
+		err := c.Validate()
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(err.Error(), "nil") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("nil-fs", func(t *testing.T) {
+		t.Parallel()
+		c := &StaticConfig{}
+		err := c.Validate()
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(err.Error(), "FS") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("embedded-fs-subpath", func(t *testing.T) {
+		t.Parallel()
+		c := &StaticConfig{
+			FS:   spaFS,
+			Path: "testdata/static/spa",
+		}
+		if err := c.Validate(); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 //go:embed all:testdata/static/spa
 var spaFS embed.FS
 
@@ -366,6 +405,47 @@ func TestUseStatic(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			bodyContains:   "api response",
+		},
+		// Catch-all (SPA): API path under API base returns 404, not fallback HTML.
+		{
+			name: "spa-catchall-api-path-not-serve-fallback",
+			config: &StaticConfig{
+				FS:       spaFS,
+				Path:     "testdata/static/spa",
+				SPA:      true,
+				CatchAll: true,
+			},
+			requestPath:   "/api/users",
+			requestMethod: http.MethodGet,
+			setupRouter: func(config *StaticConfig) *chi.Mux {
+				cfg := NewConfig().SetAPIBasePath("/api")
+				router := chi.NewRouter()
+				router.Use(cfg.Use())
+				router.Mount("/", UseStatic(config))
+				return router
+			},
+			expectedStatus:  http.StatusNotFound,
+			bodyNotContains: "SPA Index Page",
+		},
+		{
+			name: "spa-catchall-non-get-method-not-allowed",
+			config: &StaticConfig{
+				FS:       spaFS,
+				Path:     "testdata/static/spa",
+				SPA:      true,
+				CatchAll: true,
+			},
+			requestPath:   "/any/route",
+			requestMethod: http.MethodPost,
+			setupRouter: func(config *StaticConfig) *chi.Mux {
+				cfg := NewConfig().SetAPIBasePath("/api")
+				router := chi.NewRouter()
+				router.Use(cfg.Use())
+				router.Mount("/", UseStatic(config))
+				return router
+			},
+			expectedStatus:  http.StatusMethodNotAllowed,
+			bodyNotContains: "SPA Index Page",
 		},
 	}
 

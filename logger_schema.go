@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lrstanley/chix/v2/pkg/logging"
+	"github.com/lrstanley/chix/v2/internal/logging"
 )
 
 type LogSchemaID string
@@ -186,8 +186,7 @@ type LogSchema struct {
 // delimiter.
 func (s *LogSchema) checkHasGroupDelimiter() {
 	v := reflect.Indirect(reflect.ValueOf(s))
-	for i := range v.NumField() {
-		field := v.Field(i)
+	for _, field := range v.Fields() {
 		if !field.CanInterface() {
 			continue
 		}

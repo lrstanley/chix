@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lrstanley/chix/v2/pkg/text"
+	"github.com/lrstanley/chix/v2/internal/text"
 )
 
 var securityExpires = time.Now()

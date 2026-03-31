@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/lrstanley/chix/v2/pkg/logging"
-	"github.com/lrstanley/chix/v2/pkg/pool"
+	"github.com/lrstanley/chix/v2/internal/logging"
+	"github.com/lrstanley/x/sync/pool"
 )
 
 var sourceIgnoreContains = [...]string{
@@ -338,7 +338,7 @@ func (e *logEntry) Reset() {
 //     if you want to use them in other middleware or handlers.
 //   - [SetLogError] can be used to set the error that occurred in the request/response,
 //     though if using [Error] and similar functions, this is automatically done for you.
-func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //nolint:gocognit
+func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //nolint:gocognit,funlen
 	if config == nil {
 		config = DefaultLogConfig()
 	}
@@ -347,13 +347,19 @@ func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //
 	}
 	hasGroupDelimiter := config.Schema.hasGroupDelimiter.Load()
 
-	logEntryPool := pool.New(func() *logEntry {
-		return &logEntry{
-			reqBody:  logging.NewLimitedBuffer(config.MaxBodySize),
-			respBody: logging.NewLimitedBuffer(config.MaxBodySize),
-			attrs:    make([]slog.Attr, 0, 10),
-		}
-	})
+	logEntryPool := pool.Pool[*logEntry]{
+		New: func() *logEntry {
+			return &logEntry{
+				reqBody:  logging.NewLimitedBuffer(config.MaxBodySize),
+				respBody: logging.NewLimitedBuffer(config.MaxBodySize),
+				attrs:    make([]slog.Attr, 0, 10),
+			}
+		},
+		Prepare: func(v *logEntry) *logEntry {
+			v.Reset()
+			return v
+		},
+	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

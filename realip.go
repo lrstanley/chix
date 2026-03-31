@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/lrstanley/chix/v2/pkg/text"
+	"github.com/lrstanley/chix/v2/internal/text"
 )
 
 // RealIPHeaderParser is a function that parses the real IP address from the

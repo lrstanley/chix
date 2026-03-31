@@ -7,13 +7,9 @@ dist
 *.test
 *.prof
 *.conf
-!.golangci.yml
-*.yml
-*.yaml
-!/.github/**
-!/testdata/**
-vendor/*
+.task
 bin
 **/.env
 go.work*
 AGENTS.md
+TODO.md

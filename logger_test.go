@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lrstanley/chix/v2/pkg/logging"
+	"github.com/lrstanley/chix/v2/internal/logging"
 )
 
 func findSlogAttr(t *testing.T, attrs []slog.Attr, key string) *slog.Attr {

@@ -8,8 +8,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-
-	"github.com/lrstanley/chix/v2/pkg/logging"
 )
 
 type contextKeyConfig struct{}
@@ -48,7 +46,7 @@ func NewConfig() *Config {
 
 		requestIDHeader: "X-Request-Id",
 
-		logger: slog.New(&logging.Discard{}),
+		logger: slog.New(slog.DiscardHandler),
 	}
 }
 

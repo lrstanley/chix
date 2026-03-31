@@ -12,10 +12,10 @@ if [ "$(git rev-parse --show-toplevel)" != "$PWD" ]; then
     exit 1
 fi
 
-export CURRENT=$(svu current --pattern "v*")
+export CURRENT=$(svu current --tag.pattern "v*")
 export NEXT="$1"
 if [ -z "$NEXT" ]; then
-    export NEXT=$(svu patch --pattern "v*")
+    export NEXT=$(svu patch --tag.pattern "v*")
 fi
 
 if [ "$CURRENT" == "$NEXT" ]; then

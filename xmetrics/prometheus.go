@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/lrstanley/chix/v2/pkg/pool"
+	"github.com/lrstanley/x/sync/pool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -41,7 +41,9 @@ var (
 )
 
 func UsePrometheus() func(next http.Handler) http.Handler {
-	p := pool.New(func() *prometheus.Labels { return &prometheus.Labels{} })
+	p := pool.Pool[*prometheus.Labels]{
+		New: func() *prometheus.Labels { return &prometheus.Labels{} },
+	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

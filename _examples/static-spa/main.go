@@ -69,10 +69,11 @@ func httpServer(logger *slog.Logger) *http.Server {
 		"Vary":          "Accept-Encoding",
 		"Cache-Control": "public, max-age=3600",
 	})).Mount("/", chix.UseStatic(&chix.StaticConfig{
-		FS:     frontendFS,
-		Prefix: "/",
-		SPA:    true,
-		Path:   "public",
+		FS:       frontendFS,
+		Prefix:   "/",
+		Path:     "public",
+		SPA:      true,
+		Fallback: "index.html",
 	}))
 
 	return &http.Server{

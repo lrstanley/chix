@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lrstanley/x/scheduler"
+	"github.com/lrstanley/x/sync/scheduler"
 )
 
 // Run runs the HTTP server (with sane/safe defaults set), including with graceful

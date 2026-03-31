@@ -18,9 +18,9 @@ import (
 )
 
 // StaticConfig is a [net/http.Handler] that serves static files from an embedded
-// filesystem. See [UseStatic] for more information. It also supports serviing
+// filesystem. See [UseStatic] for more information. It also supports serving
 // Single Page Applications (SPA) by redirecting all files not found, to the
-// index.html file, if configured through [StaticConfig.SPA].
+// [StaticConfig.Fallback] file, if configured through [StaticConfig.SPA].
 type StaticConfig struct {
 	// fs is the filesystem to serve. Note that setting this to anything but an
 	// embedded filesystem, [os.OpenRoot] should be used.
@@ -57,6 +57,11 @@ type StaticConfig struct {
 	// SPA is a boolean that, if true, will serve a single page application, i.e.
 	// redirecting all files not found, to the index.html file.
 	SPA bool
+
+	// Fallback is the file to use when a file is not found, and the URI doesn't
+	// look like it's requesting a static asset. If empty, it will default to
+	// "index.html".
+	Fallback string
 }
 
 // Validate validates the static config. Use this to validate the config before using
@@ -73,6 +78,11 @@ func (c *StaticConfig) Validate() error {
 	if c.LocalPath == "" {
 		c.LocalPath = c.Path
 	}
+
+	if c.Fallback == "" {
+		c.Fallback = "index.html"
+	}
+	c.Fallback = strings.Trim(c.Fallback, "/")
 
 	c.Path = strings.Trim(c.Path, "/")
 	c.LocalPath = strings.Trim(c.LocalPath, "/")
@@ -143,7 +153,7 @@ func (c *StaticConfig) Validate() error {
 // UseStatic returns a handler that serves static files from the provided embedded
 // filesystem, with support for using the direct filesystem when debugging is
 // enabled. It also supports serviing Single Page Applications (SPA) by redirecting
-// all files not found, to the index.html file, if configured through
+// all files not found, to the [StaticConfig.Fallback] file, if configured through
 // [StaticConfig.SPA].
 //
 // Example usage:
@@ -183,6 +193,29 @@ func UseStatic(config *StaticConfig) http.Handler { //nolint:gocognit,funlen
 			return
 		}
 
+		mime, _, _ := strings.Cut(mime.TypeByExtension(path.Ext(r.URL.Path)), ";")
+
+		// Clone URL so we don't modify references from the original request,
+		// which might be used by other middleware (e.g. logging, tracing, etc).
+		uri := *r.URL
+		r.URL = &uri
+
+		serveFallback := func() {
+			// Use a directory URL when the fallback is index.html so [http.FileServer]
+			// serves the index file without redirecting paths ending in "/index.html".
+			switch {
+			case config.Fallback == "index.html":
+				r.URL.Path = "/"
+			case strings.HasSuffix(config.Fallback, "/index.html"):
+				dir := strings.TrimSuffix(config.Fallback, "/index.html")
+				dir = strings.Trim(dir, "/")
+				r.URL.Path = "/" + dir + "/"
+			default:
+				r.URL.Path = "/" + config.Fallback
+			}
+			fsHandler.ServeHTTP(w, r)
+		}
+
 		if !strings.HasPrefix(r.URL.Path, "/") {
 			r.URL.Path = "/" + r.URL.Path
 		}
@@ -195,22 +228,21 @@ func UseStatic(config *StaticConfig) http.Handler { //nolint:gocognit,funlen
 			}
 
 			// If the requested route has an extension, try and see if it matches
-			// any mime types that aren't text/html, and if so, explicitly return a 404. This
-			// isn't perfect, but it's a good enough heuristic to avoid serving the index.html file
-			// for non-HTML routes and causing oddities with things like /favicon.ico when it doesn't
-			// exist.
-			if mime := mime.TypeByExtension(path.Ext(r.URL.Path)); mime != "" && mime != "text/html" {
+			// any mime types that aren't text/html, and if so, explicitly return
+			// a 404. This isn't perfect, but it's a good enough heuristic to
+			// avoid serving the index.html file for non-HTML routes and causing
+			// oddities with things like /favicon.ico when it doesn't exist.
+			if mime != "" && mime != "text/html" {
 				ErrorWithCode(w, r, http.StatusNotFound, errors.New("resource not found"))
 				return
 			}
 
-			r.URL.Path = "/"
-			fsHandler.ServeHTTP(w, r)
+			serveFallback()
 			return
 		}
 
-		// Check if the path is a sub-directory, and if so, still load the index.html file,
-		// even though the directory exists.
+		// Check if the path is a sub-directory, and if so, still load the index.html
+		// file, even though the directory exists.
 		var stat fs.FileInfo
 		stat, err = f.Stat()
 		if err != nil {
@@ -218,7 +250,25 @@ func UseStatic(config *StaticConfig) http.Handler { //nolint:gocognit,funlen
 			return
 		}
 		if stat.IsDir() {
-			r.URL.Path = "/"
+			if r.URL.Path == "/" {
+				_ = f.Close()
+				serveFallback()
+				return
+			}
+
+			// If index.html exists in the directory, serve request as-is, otherwise
+			// still use the fallback.
+			var ff fs.File
+			ff, err = httpFS.Open(path.Clean(r.URL.Path + "/index.html"))
+			if err == nil {
+				_ = ff.Close()
+				fsHandler.ServeHTTP(w, r)
+				return
+			}
+
+			_ = f.Close()
+			serveFallback()
+			return
 		}
 
 		_ = f.Close()
@@ -229,6 +279,8 @@ func UseStatic(config *StaticConfig) http.Handler { //nolint:gocognit,funlen
 		// Don't wrap the internal handler, as any logic we do, we want the prefix
 		// to be stripped first.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			uri := *r.URL
+			r.URL = &uri
 			r.URL.Path = strings.TrimPrefix(r.URL.Path, config.Prefix)
 			r.URL.RawPath = strings.TrimPrefix(r.URL.RawPath, config.Prefix)
 			handler.ServeHTTP(w, r)

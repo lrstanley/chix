@@ -12,14 +12,20 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/lrstanley/chix/v2/pkg/pool"
+	"github.com/lrstanley/x/sync/pool"
 )
 
 // M is a convenience alias for quickly building a map structure that is going
 // out to a responder. Just a short-hand.
 type M map[string]any
 
-var renderBufferPool = pool.New(func() *bytes.Buffer { return &bytes.Buffer{} })
+var renderBufferPool = pool.Pool[*bytes.Buffer]{
+	New: func() *bytes.Buffer { return &bytes.Buffer{} },
+	Prepare: func(v *bytes.Buffer) *bytes.Buffer {
+		v.Reset()
+		return v
+	},
+}
 
 // JSON marshals 'v' to JSON, and setting the Content-Type as application/json.
 // Note that this does NOT auto-escape HTML.
