@@ -24,10 +24,10 @@ github.com/gorilla/sessions v1.4.0 h1:kpIYOp/oi6MG/p5PgxApU8srsSw9tuFbt46Lt7auzq
 github.com/gorilla/sessions v1.4.0/go.mod h1:FLWm50oby91+hl7p/wRxDth9bWSuk0qVL2emc7lT5ik=
 github.com/leodido/go-urn v1.4.0 h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=
 github.com/leodido/go-urn v1.4.0/go.mod h1:bvxc+MVxLKB4z00jd1z+Dvzr47oO32F/QSNjSBOlFxI=
-github.com/lrstanley/chix/v2 v2.0.0-beta.0 h1:+4i5lveDPEOgsAIU6zmxYgm1S7l/qt0u7QOm6oeR7VE=
-github.com/lrstanley/chix/v2 v2.0.0-beta.0/go.mod h1:khMSZelwu9mY0TgHhOTyCe/Lzv3dTxSPqUADSb2dyWw=
-github.com/lrstanley/x/scheduler v0.0.0-20260331013828-98de5249208d h1:mToq7lxPHdX9snYhQEMzGznTn/X1T6V5LXSgr7PMkI0=
-github.com/lrstanley/x/scheduler v0.0.0-20260331013828-98de5249208d/go.mod h1:7gO8obUTNR6D+NfQW7JCkj83q61qO0DI/uY63YrHjf4=
+github.com/lrstanley/chix/v2 v2.0.0-beta.1 h1:x0+M9y6XSE6WP21PRArPX5EXXCgdm53xEjNrsfVwfbk=
+github.com/lrstanley/chix/v2 v2.0.0-beta.1/go.mod h1:D5dTTdXbUrtn1v4lj58t0F7+KV2eXV5/WQUSQSvJTq8=
+github.com/lrstanley/x/sync v0.0.0-20260331013828-98de5249208d h1:fkPnXoczGHLzYQu8aMVwa9TW5fe0+uzBZwFvOh+b2tM=
+github.com/lrstanley/x/sync v0.0.0-20260331013828-98de5249208d/go.mod h1:q71F0fHcGckHKcLWPLgD/monxNSFE+2bRJcMAiq7fGM=
 github.com/markbates/goth v1.82.0 h1:8j/c34AjBSTNzO7zTsOyP5IYCQCMBTRBHAbBt/PI0bQ=
 github.com/markbates/goth v1.82.0/go.mod h1:/DRlcq0pyqkKToyZjsL2KgiA1zbF1HIjE7u2uC79rUk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
