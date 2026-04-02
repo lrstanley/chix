@@ -78,41 +78,27 @@ go get -u github.com/lrstanley/chix/v2@latest
 
 ## :sparkles: Features
 
-- `http.Server` wrapper that easily allows starting, and gracefully shutting
-  down your http server, and other background services, using `errgroup`.
-- RealIP middleware (supports whitelisting specific proxies, rather than allowing
-  any source).
-- private IP middleware, restricting endpoints to be internal only.
-- Rendering helpers:
-  - `JSON` (with `?pretty=true` support).
-- Auth middleware:
-  - Uses [markbates/goth](https://github.com/markbates/goth) to support many
-    different providers.
-  - Encrypts session cookies, which removes the need for local session storage.
-  - Uses Go 1.18's generics functionality to provide a custom ID and auth object
-    resolver.
-    - No longer have to type assert to your local models!
-  - Optionally requiring authentication.
-  - Optionally requiring specific roles.
-  - Optionally adding authentication info to context for use by children handlers.
-  - API key validation.
-  - API version validation.
-- Struct/type binding, from get/post data, with support for [go-playground/validator](https://github.com/go-playground/validator).
-- Structured logging using [apex/log](https://github.com/apex/log) (same API
-  as logrus).
-  - Allows injecting additional metadata into logs.
-  - Injects logger into context for use by children handlers.
-- Debug middleware:
-  - Easily let children handlers know if global debug flags are enabled.
-  - Allows masking errors, unless debugging is enabled.
-- Error handler, that automatically handles api-vs-static content responses.
-  - Supports `ErrorResolver`'s, providing the ability to override status codes
-    for specific types of errors.
-- `go:embed` helpers for mounting an embedded filesystem seamlessly as an http
-  endpoint.
-  - Useful for projects that bundle their frontend assets in their binary.
-  - Supports local filesystem reading, when debugging is enabled (TODO).
-- Middleware for robots.txt and security.txt responding.
+- `http.Server` helpers (`Run`, `RunTLS`) for starting and gracefully shutting down the server, with optional background jobs alongside HTTP via `lrstanley/x/sync/scheduler`.
+- Per-request `Config` middleware: API base path, JSON encode/decode hooks, request decode/validate, `slog.Logger`, error resolvers, and masking of non-public 5xx errors.
+- RealIP middleware (trusted proxy chain parsing; not "trust any `X-Forwarded-For`").
+- Private IP middleware for internal-only routes.
+- Request ID middleware (client header or generated ID; header name configurable on `Config`).
+- Rendering helpers: JSON, XML, CSV, and streaming CSV via iterators -- all support `?pretty=true` where applicable. JSON uses the standard library by default; `encoding/json/v2` automatically used when compiled with support for it.
+- Optional subpackage `xmetrics`: Prometheus HTTP request metrics (duration, count, bytes) keyed by chi route pattern.
+- Auth (`xauth` subpackage):
+  - [markbates/goth](https://github.com/markbates/goth) OAuth with many providers, plus a separate basic-auth flow.
+  - Cookie-backed sessions ([gorilla/sessions](https://github.com/gorilla/sessions)); encrypted store helpers so you can avoid server-side session storage.
+  - Generics for user identity type and ID -- no hand-rolled type assertions for your models.
+  - Optional auth context, required-auth middleware, and `OverrideContextAuth` for tests or impersonation.
+- API key and API version validation middleware (configurable headers).
+- Struct binding from query, form, JSON, and multipart data with [go-playground/validator](https://github.com/go-playground/validator).
+- Structured request logging with `log/slog`: `UseStructuredLogger` with configurable schemas, levels, optional request/response body capture, panic recovery, and `AppendLogAttrs` / `Log` (and level helpers) for handler-local fields.
+- Debug middleware so handlers can tell if debug mode is on; integrates with error responses when you want details only in debug.
+- Error handling that distinguishes API vs static/HTML responses, with `ResolvedError`, optional `ExposableError`, and per-error-type resolver functions.
+- `go:embed` static file serving (SPA fallback, optional local directory override for development, catch-all safe behavior near API routes).
+- Redirect helpers for auth flows: store a `next` URL in a cookie and redirect safely afterward.
+- Small utilities: multi-header middleware, strip-slashes that skips `/debug/` for pprof, conditional middleware (`UseIf` / `UseIfFunc`).
+- Middleware for `robots.txt` and `security.txt`.
 
 ## :zap: Related Libraries
 
