@@ -22,7 +22,7 @@ jobs:
         with:
           task: go-generate,generate
           allow-undefined: false
-      - uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321
+      - uses: EndBug/add-and-commit@7db2a1ad7f9311cb3da5c882bdb6cb70a6a95f99
         with:
           message: "chore(gen): codegen changes"
           commit: "--signoff"
