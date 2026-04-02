@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Static SPA Example</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: #0f0f0f;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #e0e0e0;
+        padding: 2rem;
+      }
+
+      .container {
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        border-radius: 12px;
+        padding: 3rem;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+      }
+
+      .logo {
+        display: block;
+        margin: 0 auto 2rem;
+        width: 60px;
+        height: 60px;
+      }
+
+      .content {
+        text-align: center;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+        color: #d0d0d0;
+      }
+
+      .content code {
+        background: #2a2a2a;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+        color: #f0f0f0;
+      }
+
+      .nav-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      button {
+        background: #2a2a2a;
+        border: 1px solid #3a3a3a;
+        color: #e0e0e0;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        background: #3a3a3a;
+        border-color: #4a4a4a;
+        transform: translateY(-2px);
+      }
+
+      button.active {
+        background: #3a3a3a;
+        border-color: #5a5a5a;
+        font-weight: bold;
+      }
+
+      .route-info {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: #0f0f0f;
+        border: 1px solid #2a2a2a;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9rem;
+        color: #a0a0a0;
+      }
+
+      .route-info pre {
+        margin-top: 0.5rem;
+        margin-bottom: 0;
+        color: #c0c0c0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <img src="/assets/logo.svg" alt="Logo" class="logo" />
+      <h1 id="page-title">Welcome</h1>
+      <div class="content" id="page-content">
+        <p>This is the home page of the Single Page Application example.</p>
+        <p>Click the buttons below to navigate between different routes!</p>
+      </div>
+      <div class="nav-buttons">
+        <button id="btn-home" onclick="navigateTo('/')">Home</button>
+        <button id="btn-example" onclick="navigateTo('/example')">Example</button>
+      </div>
+      <div class="route-info">
+        Current route: <span id="current-route">/</span>
+        <br />
+        /api/foo response:<br /><pre id="api-response"></pre>
+      </div>
+    </div>
+
+    <script>
+      // Simple SPA routing
+      function getCurrentRoute() {
+        return window.location.pathname;
+      }
+
+      async function fetchApiData() {
+        try {
+          const response = await fetch("/api/foo");
+          const data = await response.json();
+          const apiResponse = document.getElementById("api-response");
+          apiResponse.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          const apiResponse = document.getElementById("api-response");
+          apiResponse.textContent = "Error: " + error.message;
+        }
+      }
+
+      function updatePage(route) {
+        const title = document.getElementById("page-title");
+        const content = document.getElementById("page-content");
+        const currentRoute = document.getElementById("current-route");
+        const btnHome = document.getElementById("btn-home");
+        const btnExample = document.getElementById("btn-example");
+
+        // Update active button
+        btnHome.classList.remove("active");
+        btnExample.classList.remove("active");
+
+        if (route === "/example") {
+          title.textContent = "Example Page";
+          content.innerHTML =
+            "<p>This is the example page!</p><p>You can see how the SPA handles different routes without a full page reload.</p><p>The URL has changed to <code>/example</code> but this is still the same HTML page.</p>";
+          btnExample.classList.add("active");
+        } else {
+          title.textContent = "Welcome";
+          content.innerHTML =
+            "<p>This is the home page of the Single Page Application example.</p><p>Click the buttons below to navigate between different routes!</p>";
+          btnHome.classList.add("active");
+        }
+
+        currentRoute.textContent = route;
+      }
+
+      function navigateTo(route) {
+        // Update the URL without reloading the page
+        window.history.pushState({ route: route }, "", route);
+        updatePage(route);
+      }
+
+      // Handle browser back/forward buttons
+      window.addEventListener("popstate", function (event) {
+        updatePage(getCurrentRoute());
+      });
+
+      // Initialize page based on current route
+      updatePage(getCurrentRoute());
+
+      // Fetch API data on page load
+      fetchApiData();
+    </script>
+  </body>
+</html>

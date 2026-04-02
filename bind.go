@@ -5,30 +5,142 @@
 package chix
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/go-playground/form/v4"
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 )
 
-var (
-	// DefaultDecoder is the default decoder used by Bind. You can either override
-	// this, or provide your own. Make sure it is set before Bind is called.
-	DefaultDecoder = form.NewDecoder()
+// RequestDecoder is a function that decodes request bodies, url params, etc to the
+// given struct.
+type RequestDecoder func(r *http.Request, v any) error
 
-	// DefaultDecodeMaxMemory is the maximum amount of memory in bytes that will be
-	// used for decoding multipart/form-data requests.
-	DefaultDecodeMaxMemory int64 = 8 << 20
+// DefaultRequestDecoder returns the default form decoder.
+func DefaultRequestDecoder() RequestDecoder {
+	dec := form.NewDecoder()
 
-	// DefaultValidator is the default validator used by Bind, when the provided
-	// struct to the Bind() call doesn't implement Validatable. Set this to nil
-	// to disable validation using go-playground/validator.
-	DefaultValidator = validator.New()
-)
+	return func(r *http.Request, v any) error {
+		var err error
+
+		if r.Body != nil {
+			defer r.Body.Close()
+		}
+
+		jsonDecoder := GetConfig(r.Context()).GetJSONDecoder()
+
+		err = dec.Decode(v, r.Form)
+
+		if err == nil && (r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch) {
+			switch {
+			case strings.HasPrefix(r.Header.Get("Content-Type"), "application/json"):
+				err = jsonDecoder(r, v)
+			case strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
+				err = r.ParseMultipartForm(4 << 20) // 4MB
+				if err == nil {
+					err = dec.Decode(v, r.MultipartForm.Value)
+				}
+			default:
+				err = dec.Decode(v, r.PostForm)
+			}
+		}
+
+		if err != nil {
+			var invalidDecoderError *form.InvalidDecoderError
+			if errors.As(err, &invalidDecoderError) {
+				return &ResolvedError{
+					Err:        err,
+					StatusCode: http.StatusInternalServerError,
+				}
+			}
+			return &ResolvedError{
+				Err:        err,
+				StatusCode: http.StatusBadRequest,
+				Visibility: ErrorPublic,
+			}
+		}
+
+		return nil
+	}
+}
+
+// RequestValidator is a function that validates a struct.
+type RequestValidator func(r *http.Request, v any) error
+
+type translationWrappedError struct {
+	err        validator.FieldError
+	translated string
+}
+
+func (e *translationWrappedError) Error() string {
+	return e.translated
+}
+
+func (e *translationWrappedError) Unwrap() error {
+	return e.err
+}
+
+// DefaultRequestValidator returns the default validator. It supports both
+// [Validatable] implemented structs, in addition to go-playground/validator
+// struct tags.
+func DefaultRequestValidator() RequestValidator {
+	structValidator := validator.New()
+	uni := ut.New(en.New())
+
+	return func(r *http.Request, v any) error {
+		if v, ok := v.(Validatable); ok {
+			if err := v.Validate(); err != nil {
+				if _, rok := IsResolvedError(err); rok {
+					return err
+				}
+				return &ResolvedError{
+					Err:        err,
+					StatusCode: http.StatusBadRequest,
+					Visibility: ErrorPublic,
+				}
+			}
+			return nil
+		}
+
+		err := structValidator.StructCtx(r.Context(), v)
+		if err != nil {
+			var invalidValidationError *validator.InvalidValidationError
+			if errors.As(err, &invalidValidationError) {
+				return &ResolvedError{
+					Err:        err,
+					StatusCode: http.StatusInternalServerError,
+				}
+			}
+
+			var validationErrors *validator.ValidationErrors
+			if errors.As(err, &validationErrors) {
+				var errs []error
+				for _, err := range *validationErrors {
+					errs = append(errs, &translationWrappedError{
+						err:        err,
+						translated: err.Translate(uni.GetFallback()),
+					})
+				}
+				return &ResolvedError{
+					Errs:       errs,
+					StatusCode: http.StatusBadRequest,
+					Visibility: ErrorPublic,
+				}
+			}
+
+			return &ResolvedError{
+				Err:        err,
+				StatusCode: http.StatusBadRequest,
+				Visibility: ErrorPublic,
+			}
+		}
+
+		return nil
+	}
+}
 
 // Validatable is an interface that can be implemented by structs to
 // provide custom validation logic, on top of the default go-playground/form
@@ -37,77 +149,68 @@ type Validatable interface {
 	Validate() error
 }
 
-// Bind decodes the request body to the given struct. Take a look at
-// DefaultDecoder to add additional customizations to the default decoder.
-// You can add additional customizations by using the Validatable interface,
-// with a custom implementation of the Validate() method on v. Alternatively,
-// chix also supports the go-playground/validator package, which allows various
-// validation methods via struct tags.
+// Bind binds various request attributes to the given struct, including query
+// parameters, form data (multipart/form-data included), JSON bodies, etc, in
+// addition to validating the struct. It calls both [Config.GetRequestDecoder] and
+// [Config.GetRequestValidator] to perform the necessary operations. Behind the
+// scenes, both go-playground/form and go-playground/validator are used to perform
+// the necessary operations.
 //
-// At this time the only supported content-types are application/json,
-// application/x-www-form-urlencoded, as well as GET parameters.
+// Example:
 //
-// If validation fails, an error that is wrapped with the necessary status code
-// will be returned (can just pass to chix.Error() and it will know the appropriate
-// HTTP code to return, and if it should be a JSON body or not).
+//	type User struct {
+//		Name	string	`json:"name" validate:"required"`
+//		Email	string	`json:"email" validate:"required,email"`
+//		Pretty	bool	`form:"pretty"`
+//	}
+//
+//	func (u *User) Validate() error {
+//		if u.Name == "system" {
+//			return errors.New("system users are not allowed")
+//		}
+//		return nil
+//	}
+//
+//	func main() {
+//		// [...]
+//		r.Post("/user", func(w http.ResponseWriter, r *http.Request) {
+//			var user User
+//			if err := chix.Bind(r, &user); err != nil {
+//				chix.Error(w, r, err)
+//				return
+//			}
+//			// [... more request-specific logic...]
+//			w.WriteHeader(http.StatusOK)
+//		})
+//	}
+//
+// References:
+//   - https://github.com/go-playground/validator#fields
+//   - https://github.com/go-playground/form#examples
 func Bind(r *http.Request, v any) (err error) {
-	var rerr error
-
-	if err = r.ParseForm(); err != nil {
-		rerr = fmt.Errorf("error parsing %s parameters, invalid request", r.Method)
-		goto handle
-	}
-
-	switch r.Method {
-	case http.MethodGet, http.MethodHead:
-		err = DefaultDecoder.Decode(v, r.Form)
-	case http.MethodPost, http.MethodPut, http.MethodPatch:
-		switch {
-		case strings.HasPrefix(r.Header.Get("Content-Type"), "application/json"):
-			dec := json.NewDecoder(r.Body)
-			defer r.Body.Close()
-			err = dec.Decode(v)
-		case strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
-			err = r.ParseMultipartForm(DefaultDecodeMaxMemory)
-			if err == nil {
-				err = DefaultDecoder.Decode(v, r.MultipartForm.Value)
-			}
-		default:
-			err = DefaultDecoder.Decode(v, r.PostForm)
-		}
-	default:
-		return WrapError(fmt.Errorf("unsupported method %s", r.Method), http.StatusBadRequest)
-	}
+	err = r.ParseForm()
 	if err != nil {
-		rerr = fmt.Errorf("error decoding %s request into required format (%T): validate request parameters", r.Method, v)
-	}
-
-handle:
-	if err != nil {
-		return WrapError(rerr, http.StatusBadRequest)
-	}
-
-	if v, ok := v.(Validatable); ok {
-		if err = v.Validate(); err != nil {
-			return WrapError(err, http.StatusBadRequest)
+		return &ResolvedError{
+			Err:        err,
+			StatusCode: http.StatusBadRequest,
+			Visibility: ErrorPublic,
 		}
-
-		return nil
 	}
 
-	if DefaultValidator != nil {
-		err = DefaultValidator.Struct(v)
+	cfg := GetConfig(r.Context())
+
+	if dec := cfg.GetRequestDecoder(); dec != nil {
+		err = dec(r, v)
 		if err != nil {
-			invalidValidationError := &validator.InvalidValidationError{}
-			if errors.As(err, &invalidValidationError) {
-				panic(fmt.Errorf("invalid validation error: %w", err))
-			}
-
-			// for _, err := range err.(validator.ValidationErrors) {}
-			return WrapError(err, http.StatusBadRequest)
+			return err
 		}
+	}
 
-		return nil
+	if val := cfg.GetRequestValidator(); val != nil {
+		err = val(r, v)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

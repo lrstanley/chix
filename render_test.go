@@ -6,7 +6,9 @@ package chix
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"io"
+	"iter"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -97,5 +99,106 @@ func TestJSON(t *testing.T) {
 
 			_ = testJSONMarshalEqual(t, tt.data, resp.Body, true)
 		})
+	}
+}
+
+type xmlPerson struct {
+	XMLName xml.Name `xml:"person"`
+	Name    string   `xml:"name"`
+	Age     int      `xml:"age"`
+}
+
+func TestXML(t *testing.T) {
+	t.Parallel()
+
+	input := xmlPerson{XMLName: xml.Name{Local: "person"}, Name: "Alice", Age: 30}
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/?pretty=true", http.NoBody)
+	rec := httptest.NewRecorder()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		XML(w, r, http.StatusCreated, input)
+	})
+
+	handler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "application/xml" {
+		t.Fatalf("expected content type application/xml, got %q", ct)
+	}
+
+	var out xmlPerson
+	dec := xml.NewDecoder(resp.Body)
+	if err := dec.Decode(&out); err != nil {
+		t.Fatalf("failed decoding xml: %v", err)
+	}
+	if !reflect.DeepEqual(input, out) {
+		t.Fatalf("expected %#v, got %#v", input, out)
+	}
+}
+
+func TestCSV(t *testing.T) {
+	t.Parallel()
+
+	rows := [][]string{{"a", "b"}, {"1", "2"}}
+	req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+	rec := httptest.NewRecorder()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		CSV(w, r, http.StatusOK, rows)
+	})
+
+	handler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "text/csv" {
+		t.Fatalf("expected content type text/csv, got %q", ct)
+	}
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	expected := "a,b\n1,2\n"
+	if string(bodyBytes) != expected {
+		t.Fatalf("expected csv %q, got %q", expected, string(bodyBytes))
+	}
+}
+
+func TestCSVIter(t *testing.T) {
+	t.Parallel()
+
+	rows := [][]string{{"x", "y"}, {"3", "4"}}
+	it := func(yield func([]string, error) bool) {
+		for _, r := range rows {
+			if !yield(r, nil) {
+				return
+			}
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+	rec := httptest.NewRecorder()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		CSVIter(w, r, http.StatusOK, iter.Seq2[[]string, error](it))
+	})
+
+	handler.ServeHTTP(rec, req)
+	resp := rec.Result()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "text/csv" {
+		t.Fatalf("expected content type text/csv, got %q", ct)
+	}
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	expected := "x,y\n3,4\n"
+	if string(bodyBytes) != expected {
+		t.Fatalf("expected csv %q, got %q", expected, string(bodyBytes))
 	}
 }

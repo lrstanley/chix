@@ -1,0 +1,2 @@
+non-spa subpath file content
+

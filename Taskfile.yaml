@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+tasks:
+  default:
+    cmds:
+      - task: prepare
+  license:
+    desc: apply license headers via liam.sh script
+    cmds:
+      - curl -sL https://liam.sh/-/gh/g/license-header.sh | bash -s
+  up:
+    desc: update module dependencies in root and nested modules
+    cmds:
+      - for: [".", "_examples", "xmetrics", "xauth"]
+        cmd: cd {{ .ITEM | quote }} && go get -u ./... && go get -u -t ./... && go mod tidy
+  prepare:
+    desc: license headers, go generate, and tests
+    deps: [license]
+    sources: ["cmd/codegen/**"]
+    generates: ["realip.gen.go"]
+    cmds:
+      - go generate -x ./...
+  lint:
+    desc: run linter
+    deps: [prepare]
+    cmds:
+      - go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
+      - golangci-lint run --fix
+  fmt:
+    desc: format code
+    deps: [prepare]
+    aliases: [format]
+    cmds:
+      - gofumpt -w .
+  test:
+    desc: run tests
+    deps: [prepare]
+    cmds:
+      - go test -v -race -count 5 -p 3 -cpu 1,4 {{ or .CLI_ARGS "./..." }}
+  release:
+    desc: run release script
+    cmds:
+      - ./.github/release.sh

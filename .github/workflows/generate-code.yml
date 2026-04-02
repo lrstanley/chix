@@ -10,13 +10,19 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - name: install-go
-        uses: actions/setup-go@v5
+      - uses: lrstanley/.github/composite/go-versions@master
+        id: goversion
         with:
-          go-version: latest
-      - uses: actions/checkout@v4
-      - run: make generate
-      - uses: EndBug/add-and-commit@a604fba70a846a0ea59e6040ef8a4a4f95015772
+          version: latest
+      - uses: lrstanley/.github/composite/install-go@master
+        with:
+          version: ${{ steps.goversion.outputs.version }}
+      - uses: actions/checkout@v6
+      - uses: lrstanley/.github/composite/invoke-task@master
+        with:
+          task: go-generate,generate
+          allow-undefined: false
+      - uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321
         with:
           message: "chore(gen): codegen changes"
           commit: "--signoff"

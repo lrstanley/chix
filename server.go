@@ -7,202 +7,167 @@ package chix
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"github.com/apex/log"
-	"golang.org/x/sync/errgroup"
+	"github.com/lrstanley/x/sync/scheduler"
 )
 
-const (
-	srvDefaultReadTimeout    = 15 * time.Second
-	srvDefaultWriteTimeout   = 15 * time.Second
-	srvDefaultMaxHeaderBytes = 1 << 20
-	srvCancelTimeout         = 10 * time.Second
-)
-
-type Runner func(ctx context.Context) error
-
-func (r Runner) Invoke(ctx context.Context) func() error {
-	fn := func() error {
-		return r(ctx)
-	}
-	return fn
-}
-
-func RunnerInterval(name string, r Runner, frequency time.Duration, runImmediately, exitOnError bool) Runner {
-	return func(ctx context.Context) error {
-		logEntry := log.FromContext(ctx).WithField("runner", name)
-		ctx = log.NewContext(ctx, logEntry)
-
-		var lastRun time.Time
-
-		if runImmediately {
-			lastRun = time.Now()
-			logEntry.Info("invoking runner")
-			if err := r(ctx); err != nil {
-				logEntry.WithError(err).WithDuration(time.Since(lastRun)).Error("invocation failed")
-				return err
-			}
-			logEntry.WithDuration(time.Since(lastRun)).Info("invocation complete")
-		}
-
-		ticker := time.NewTicker(frequency)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-ticker.C:
-				lastRun = time.Now()
-				logEntry.Info("invoking runner")
-				if err := r(ctx); err != nil {
-					logEntry.WithError(err).WithDuration(time.Since(lastRun)).Error("invocation failed")
-
-					if exitOnError {
-						return err
-					}
-
-					logEntry.WithDuration(time.Since(lastRun)).Info("invocation complete")
-					continue
-				}
-			}
-		}
-	}
-}
-
-// Run runs the provided http server, and listens for any termination signals
-// (SIGINT, SIGTERM, SIGQUIT, etc). If runners are provided, those will run
-// concurrently.
+// Run runs the HTTP server (with sane/safe defaults set), including with graceful
+// termination. When the context is cancelled, the server will be gracefully
+// terminated (with a max timeout of 60 seconds), waiting for all requests to
+// complete. You can pass additional scheduler jobs, which allows additional
+// asynchronous tasks/cron-jobs to be run alongside the HTTP server.
 //
-// If the http server, or any runners return an error, all runners will
-// terminate (assuming they listen to the provided context), and the first
-// known error will be returned. The http server will be gracefully shut down,
-// with a timeout of 10 seconds.
-func Run(srv *http.Server, runners ...Runner) error {
-	return RunCtx(context.Background(), srv, runners...)
+// This will also listen for OS signals (SIGINT, SIGTERM, SIGQUIT) and gracefully
+// terminate the server and all jobs when received.
+func Run(
+	pctx context.Context,
+	logger *slog.Logger,
+	srv *http.Server,
+	jobs ...scheduler.Job,
+) error {
+	return scheduler.Run(pctx, append(
+		[]scheduler.Job{scheduler.JobFunc(func(ctx context.Context) error {
+			return NewServer(ctx, logger, srv, "", "")
+		})},
+		jobs...,
+	)...)
 }
 
-// RunTLS is the same as Run, but allows for TLS to be used.
-func RunTLS(srv *http.Server, certFile, keyFile string, runners ...Runner) error {
-	return RunTLSContext(context.Background(), srv, certFile, keyFile, runners...)
+// RunTLS runs the HTTP server (with sane/safe defaults set) with TLS support,
+// including with graceful termination. When the context is cancelled, the server
+// will be gracefully terminated (with a max timeout of 60 seconds), waiting for
+// all requests to complete. You can pass additional scheduler jobs, which allows
+// additional asynchronous tasks/cron-jobs to be run alongside the HTTP server.
+//
+// This will also listen for OS signals (SIGINT, SIGTERM, SIGQUIT) and gracefully
+// terminate the server and all jobs when received.
+func RunTLS(
+	pctx context.Context,
+	logger *slog.Logger,
+	srv *http.Server,
+	certFile, keyFile string,
+	jobs ...scheduler.Job,
+) error {
+	return scheduler.Run(pctx, append(
+		[]scheduler.Job{scheduler.JobFunc(func(ctx context.Context) error {
+			return NewServer(ctx, logger, srv, certFile, keyFile)
+		})},
+		jobs...,
+	)...)
 }
 
-// Deprecated: Use [RunContext] instead.
-func RunCtx(ctx context.Context, srv *http.Server, runners ...Runner) error {
-	return RunContext(ctx, srv, runners...)
+// NewServerWithoutDefaults runs the HTTP server, including with graceful termination,
+// so when the context is cancelled, the server will be gracefully terminated (with
+// a max timeout of 60 seconds), waiting for all requests to complete. If certFile
+// and keyFile are provided, the server will be run with TLS enabled.
+func NewServerWithoutDefaults(
+	ctx context.Context,
+	logger *slog.Logger,
+	srv *http.Server,
+	certFile, keyFile string,
+) error {
+	if srv == nil {
+		panic("srv is nil")
+	}
+	return withGracefulShutdown(ctx, logger, srv, certFile, keyFile)
 }
 
-// RunContext is the same as Run, but with the provided context that can be used
-// to externally cancel all runners and the http server.
-func RunContext(ctx context.Context, srv *http.Server, runners ...Runner) error {
-	serverSetDefaults(srv)
-
-	var g *errgroup.Group
-	g, ctx = errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		return signalListener(ctx)
-	})
-
-	g.Go(func() error {
-		return httpServer(ctx, srv, "", "")
-	})
-
-	for _, runner := range runners {
-		g.Go(runner.Invoke(ctx))
+// NewServer runs the HTTP server (with sane/safe defaults set), including with
+// graceful termination, so when the context is cancelled, the server will be
+// gracefully terminated (with a max timeout of 60 seconds), waiting for all
+// requests to complete. If certFile and keyFile are provided, the server will be
+// run with TLS enabled.
+func NewServer(
+	ctx context.Context,
+	logger *slog.Logger,
+	srv *http.Server,
+	certFile, keyFile string,
+) error {
+	if srv == nil {
+		panic("srv is nil")
+	}
+	switch {
+	case srv.ReadTimeout <= -1:
+		srv.ReadTimeout = 0
+	case srv.ReadTimeout == 0:
+		srv.ReadTimeout = 15 * time.Second
 	}
 
-	return g.Wait()
+	switch {
+	case srv.WriteTimeout <= -1:
+		srv.WriteTimeout = 0
+	case srv.WriteTimeout == 0:
+		srv.WriteTimeout = 15 * time.Second
+	}
+
+	switch {
+	case srv.MaxHeaderBytes <= -1:
+		srv.MaxHeaderBytes = http.DefaultMaxHeaderBytes
+	case srv.MaxHeaderBytes == 0:
+		srv.MaxHeaderBytes = http.DefaultMaxHeaderBytes
+	}
+
+	if srv.BaseContext == nil {
+		srv.BaseContext = func(_ net.Listener) context.Context {
+			return context.WithoutCancel(ctx)
+		}
+	}
+
+	return NewServerWithoutDefaults(ctx, logger, srv, certFile, keyFile)
 }
 
-// RunTLSContext is the same as Run, but with the provided context that can be used
-// to externally cancel all runners and the http server, and also allows for TLS
-// to be used.
-func RunTLSContext(ctx context.Context, srv *http.Server, certFile, keyFile string, runners ...Runner) error {
-	serverSetDefaults(srv)
-
-	var g *errgroup.Group
-	g, ctx = errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		return signalListener(ctx)
-	})
-
-	g.Go(func() error {
-		return httpServer(ctx, srv, certFile, keyFile)
-	})
-
-	for _, runner := range runners {
-		g.Go(runner.Invoke(ctx))
-	}
-
-	return g.Wait()
-}
-
-var SetServerDefaults = true
-
-func serverSetDefaults(srv *http.Server) {
-	if !SetServerDefaults {
-		return
-	}
-
-	if srv.ReadTimeout == 0 {
-		srv.ReadTimeout = srvDefaultReadTimeout
-	}
-
-	if srv.WriteTimeout == 0 {
-		srv.WriteTimeout = srvDefaultWriteTimeout
-	}
-
-	if srv.MaxHeaderBytes == 0 {
-		srv.MaxHeaderBytes = srvDefaultMaxHeaderBytes
-	}
-}
-
-func signalListener(ctx context.Context) error {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-
-	select {
-	case sig := <-quit:
-		log.FromContext(ctx).WithField("signal", sig).Warn("received signal, starting graceful termination")
-		return fmt.Errorf("received signal: %v", sig)
-	case <-ctx.Done():
-		return nil
-	}
-}
-
-func httpServer(ctx context.Context, srv *http.Server, certFile, keyFile string) error {
-	ch := make(chan error)
+func withGracefulShutdown(
+	ctx context.Context,
+	logger *slog.Logger,
+	srv *http.Server,
+	certFile, keyFile string,
+) error {
+	errc := make(chan error)
 	go func() {
-		var err error
-
 		if certFile != "" && keyFile != "" {
-			err = srv.ListenAndServeTLS(certFile, keyFile)
+			logger.LogAttrs(
+				ctx,
+				slog.LevelInfo,
+				"starting tls http server",
+				slog.String("cert_file", certFile),
+				slog.String("key_file", keyFile),
+				slog.String("addr", srv.Addr),
+			)
+			errc <- srv.ListenAndServeTLS(certFile, keyFile)
 		} else {
-			err = srv.ListenAndServe()
+			logger.LogAttrs(
+				ctx,
+				slog.LevelInfo,
+				"starting http server",
+				slog.String("addr", srv.Addr),
+			)
+			errc <- srv.ListenAndServe()
 		}
-
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			ch <- err
-		}
-		close(ch)
 	}()
 
-	select {
-	case <-ctx.Done():
-	case err := <-ch:
-		return err
+	handle := func(err error) error {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
 	}
 
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), srvCancelTimeout)
-	defer cancel()
-
-	return srv.Shutdown(ctxTimeout)
+	select {
+	case <-ctx.Done():
+		logger.LogAttrs(
+			ctx,
+			slog.LevelInfo,
+			"context cancelled, gracefully stopping http server",
+			slog.String("addr", srv.Addr),
+		)
+		ctxt, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		return handle(srv.Shutdown(ctxt))
+	case err := <-errc:
+		return handle(err)
+	}
 }
