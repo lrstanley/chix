@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: lrstanley/.github/composite/invoke-task@master
         with:
-          task: go-generate,generate
+          task: go-prepare,prepare
           allow-undefined: false
       - uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321
         with:
