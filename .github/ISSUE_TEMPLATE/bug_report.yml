@@ -48,6 +48,14 @@ body:
       placeholder: 'Examples: "v1.2.3, master branch, commit 1a2b3c"'
     validations:
       required: true
+  - type: input
+    id: browser
+    attributes:
+      label: "🌐 Version: Browser"
+      description: What browser (and browser version) did this problem occur on?
+      placeholder: 'Example: "Google Chrome 99.0.4844.82"'
+    validations:
+      required: true
   - type: dropdown
     id: os
     attributes:
