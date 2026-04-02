@@ -71,7 +71,7 @@
 <!-- template:begin:goget -->
 <!-- do not edit anything in this "template" block, its auto-generated -->
 ```console
-go get -u github.com/lrstanley/chix@latest
+go get -u github.com/lrstanley/chix/v2@latest
 ```
 <!-- template:end:goget -->
 
