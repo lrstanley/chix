@@ -3,7 +3,6 @@ module github.com/lrstanley/chix/xauth/v2
 go 1.26.0
 
 require (
-	github.com/go-chi/chi/v5 v5.2.5
 	github.com/gorilla/sessions v1.4.0
 	github.com/lrstanley/chix/v2 v2.0.0-beta.1
 	github.com/markbates/goth v1.82.0
@@ -11,6 +10,7 @@ require (
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
+	github.com/go-chi/chi/v5 v5.2.5 // indirect
 	github.com/go-playground/form/v4 v4.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect

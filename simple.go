@@ -33,7 +33,7 @@ func UseHeaders(headers map[string]string) func(next http.Handler) http.Handler 
 }
 
 // UseStripSlashes is a middleware that strips trailing slashes from the URL path,
-// and accounts for the pprof /debug/ path, which breaks when slahes are stripped.
+// and accounts for the pprof /debug/ path, which breaks when slashes are stripped.
 // Use [github.com/go-chi/chi/v5/middleware.StripSlashes] instead if you don't
 // need this functionality.
 func UseStripSlashes() func(next http.Handler) http.Handler {
