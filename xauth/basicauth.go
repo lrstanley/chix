@@ -74,7 +74,7 @@ func NewBasicAuthHandler[Ident any](config *BasicAuthConfig[Ident]) http.Handler
 		mux.Handle("GET /self", self)
 	}
 
-	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
+	var login http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check if they've already logged in.
 		if IdentFromContext[Ident](r.Context()) != nil {
 			chix.SecureRedirectOrNext(w, r, http.StatusTemporaryRedirect, "/")
@@ -100,6 +100,8 @@ func NewBasicAuthHandler[Ident any](config *BasicAuthConfig[Ident]) http.Handler
 		}
 		chix.SecureRedirectOrNext(w, r, http.StatusTemporaryRedirect, "/")
 	})
+	login = UseAuthContext(config.Service)(login)
+	mux.Handle("GET /login", login)
 
 	mux.HandleFunc("GET /logout", func(w http.ResponseWriter, r *http.Request) {
 		_ = gothic.Logout(w, r)

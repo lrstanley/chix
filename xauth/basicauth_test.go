@@ -159,15 +159,21 @@ func TestNewBasicAuthHandler_loginWhenAlreadyAuthenticated(t *testing.T) {
 		Service:        svc,
 		SessionStorage: testSessionStore,
 	})
-	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u := &testUser{Name: "alice"}
-		r = r.WithContext(OverrideContextAuth(r.Context(), "alice", u))
-		h.ServeHTTP(w, r)
-	})
+
+	reqLogin := httptest.NewRequest(http.MethodGet, "http://example.com/login", http.NoBody)
+	reqLogin.SetBasicAuth("alice", "secret")
+	recLogin := httptest.NewRecorder()
+	h.ServeHTTP(recLogin, reqLogin)
+	if recLogin.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("first login status = %d, want %d", recLogin.Code, http.StatusTemporaryRedirect)
+	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/login", http.NoBody)
+	for _, c := range recLogin.Result().Cookies() {
+		req.AddCookie(c)
+	}
 	rec := httptest.NewRecorder()
-	wrapped.ServeHTTP(rec, req)
+	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusTemporaryRedirect {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusTemporaryRedirect)
