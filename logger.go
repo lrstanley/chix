@@ -328,27 +328,17 @@ func panicStackFrames(callersSkip int) (stack []string, sourcePC uintptr) {
 	n := runtime.Callers(callersSkip, pcBuf)
 	pcBuf = pcBuf[:n]
 	frames := runtime.CallersFrames(pcBuf)
-	for {
-		frame, more := frames.Next()
+	for frame, more := frames.Next(); more; frame, more = frames.Next() {
 		if frame.File == "" {
-			if !more {
-				break
-			}
 			continue
 		}
 		if strings.Contains(frame.File, "runtime/panic.go") {
-			if !more {
-				break
-			}
 			continue
 		}
 		if sourcePC == 0 {
 			sourcePC = frame.PC
 		}
 		stack = append(stack, fmt.Sprintf("%s:%d", frame.File, frame.Line))
-		if !more {
-			break
-		}
 	}
 	return stack, sourcePC
 }
