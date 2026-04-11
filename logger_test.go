@@ -6,6 +6,7 @@ package chix
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/lrstanley/chix/v2/internal/logging"
 )
 
@@ -169,6 +171,39 @@ func TestUseStructuredLogger(t *testing.T) {
 				tt.validate(t, logHandler.Records)
 			}
 		})
+	}
+}
+
+type captureSourceHandler struct {
+	got *slog.Source
+}
+
+func (h *captureSourceHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *captureSourceHandler) Handle(_ context.Context, r slog.Record) error {
+	h.got = r.Source()
+	return nil
+}
+
+func (h *captureSourceHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+func (h *captureSourceHandler) WithGroup(string) slog.Handler { return h }
+
+func TestUseStructuredLogger_panicLogSource(t *testing.T) {
+	srcCapture := &captureSourceHandler{}
+	cfg := NewConfig().SetLogger(slog.New(srcCapture))
+	r := chi.NewRouter()
+	r.Use(cfg.Use())
+	r.Use(UseStructuredLogger(DefaultLogConfig()))
+	r.Get("/panic", func(_ http.ResponseWriter, _ *http.Request) {
+		panic("test panic for source attribution")
+	})
+	r.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://example.com/panic", http.NoBody))
+	if srcCapture.got == nil {
+		t.Fatal("expected non-nil source from slog.Record")
+	}
+	if !strings.Contains(srcCapture.got.File, "logger_test.go") {
+		t.Fatalf("expected source file to be the panicking handler (logger_test.go), got %q", srcCapture.got.File)
 	}
 }
 

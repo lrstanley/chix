@@ -320,6 +320,39 @@ func (e *logEntry) Reset() {
 	e.attrs = e.attrs[0:0]
 }
 
+// panicStackFrames walks the stack from [runtime.Callers] starting at callersSkip and
+// returns frame strings for logging, plus the program counter of the first frame outside
+// runtime/panic.go (for [slog.Record] source attribution when logging recovered panics).
+func panicStackFrames(callersSkip int) (stack []string, sourcePC uintptr) {
+	pcBuf := make([]uintptr, 32)
+	n := runtime.Callers(callersSkip, pcBuf)
+	pcBuf = pcBuf[:n]
+	frames := runtime.CallersFrames(pcBuf)
+	for {
+		frame, more := frames.Next()
+		if frame.File == "" {
+			if !more {
+				break
+			}
+			continue
+		}
+		if strings.Contains(frame.File, "runtime/panic.go") {
+			if !more {
+				break
+			}
+			continue
+		}
+		if sourcePC == 0 {
+			sourcePC = frame.PC
+		}
+		stack = append(stack, fmt.Sprintf("%s:%d", frame.File, frame.Line))
+		if !more {
+			break
+		}
+	}
+	return stack, sourcePC
+}
+
 // UseStructuredLogger is a middleware that logs the request and response as a structured
 // log entry. It uses the [LogConfig] to determine the log level, and what the schema
 // of the log entry should be. See [DefaultLogConfig] for the default configuration,
@@ -390,6 +423,8 @@ func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //
 			start := time.Now()
 
 			defer func() {
+				var panicSourcePC uintptr
+
 				if rec := recover(); rec != nil {
 					// Return HTTP 500 if recover is enabled and no response status was set.
 					if config.RecoverPanics && ww.Status() == 0 && r.Header.Get("Connection") != "Upgrade" {
@@ -405,18 +440,9 @@ func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //
 					entry.append(slog.String(config.Schema.ErrorMessage, fmt.Sprintf("panic: %v", rec)))
 
 					if rec != http.ErrAbortHandler { //nolint:errorlint
-						pc := make([]uintptr, 10)   // Capture up to 10 stack frames.
-						n := runtime.Callers(3, pc) // Skip 3 frames (Callers, this middleware, runtime/panic.go).
-						pc = pc[:n]
-
-						// Process panic stack frames to print detailed information.
-						frames := runtime.CallersFrames(pc)
-						var stackValues []string
-						for frame, more := frames.Next(); more; frame, more = frames.Next() {
-							if !strings.Contains(frame.File, "runtime/panic.go") {
-								stackValues = append(stackValues, fmt.Sprintf("%s:%d", frame.File, frame.Line))
-							}
-						}
+						// Skip 3 frames: [runtime.Callers], this defer, runtime/panic.go.
+						stackValues, pc := panicStackFrames(3)
+						panicSourcePC = pc
 						entry.append(slog.Any(config.Schema.ErrorStackTrace, stackValues))
 					}
 				}
@@ -494,12 +520,16 @@ func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //
 					entry.append(logging.GroupAttrsRecursive(entry.attrs)...)
 				}
 
-				logger.LogAttrs(
-					ctx,
-					level,
-					r.Method+" "+r.URL.String()+" => "+strconv.Itoa(statusCode)+" ("+duration.String()+")",
-					entry.attrs...,
-				)
+				msg := r.Method + " " + r.URL.String() + " => " + strconv.Itoa(statusCode) + " (" + duration.String() + ")"
+				if panicSourcePC != 0 {
+					// Use the panic site's PC so AddSource attributes the log to the handler that
+					// panicked, not this middleware's LogAttrs call site (see [slog.Logger.logAttrs]).
+					lr := slog.NewRecord(time.Now(), level, msg, panicSourcePC)
+					lr.AddAttrs(entry.attrs...)
+					_ = logger.Handler().Handle(ctx, lr) //nolint:sloglint
+				} else {
+					logger.LogAttrs(ctx, level, msg, entry.attrs...) //nolint:sloglint
+				}
 			}()
 
 			next.ServeHTTP(ww, r.WithContext(ctx))
