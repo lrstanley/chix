@@ -102,6 +102,14 @@ func httpServer(logger *slog.Logger) *http.Server {
 		chix.ErrorWithCode(w, r, http.StatusForbidden, errors.New("custom error 1"), errors.New("custom error 2"))
 	})
 
+	// Panics in handlers are recovered by [UseStructuredLogger] when [LogConfig.RecoverPanics]
+	// is true (the default from [DefaultLogConfig]). The client receives HTTP 500; the panic
+	// is logged as an error with stack information. Can also use [UseRecoverer] middleware,
+	// if you are not using [UseStructuredLogger] middleware.
+	r.Get("/panic", func(_ http.ResponseWriter, _ *http.Request) {
+		panic("intentional panic for error-handling demo")
+	})
+
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		// You can also pass no errors, and just a status code, and the error value
 		// will be the defined status text for that status code. Visibility by default

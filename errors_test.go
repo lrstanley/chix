@@ -14,7 +14,7 @@ import (
 func TestUseRecoverer(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 
-	handler := UseRecoverer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+	handler := UseRecoverer()(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		panic("testing panic")
 	}))
 
@@ -40,7 +40,7 @@ func TestUseRecovererAbort(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
 
-	handler := UseRecoverer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+	handler := UseRecoverer()(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		panic(http.ErrAbortHandler)
 	}))
 

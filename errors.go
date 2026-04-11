@@ -9,11 +9,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 // ErrorVisibility can be used to control the visibility of an error.
@@ -362,19 +361,21 @@ func errorStringSlice(errs []error) []string {
 //
 // NOTE: This middleware should be loaded after logging/request-id/use-debug, etc
 // middleware, but before the handlers that may panic.
-func UseRecoverer(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if rvr := recover(); rvr != nil {
-				if e, ok := rvr.(error); ok && errors.Is(e, http.ErrAbortHandler) {
-					panic(rvr)
+func UseRecoverer() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if rvr := recover(); rvr != nil {
+					if e, ok := rvr.(error); ok && errors.Is(e, http.ErrAbortHandler) {
+						panic(rvr)
+					}
+					if IsDebug(r.Context()) {
+						fmt.Fprintf(os.Stderr, "panic: %v\n%s", rvr, debug.Stack())
+					}
+					ErrorWithCode(w, r, http.StatusInternalServerError, errors.New(string(debug.Stack())))
 				}
-				if IsDebug(r.Context()) {
-					middleware.PrintPrettyStack(rvr)
-				}
-				ErrorWithCode(w, r, http.StatusInternalServerError, errors.New(string(debug.Stack())))
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
+			}()
+			next.ServeHTTP(w, r)
+		})
+	}
 }
