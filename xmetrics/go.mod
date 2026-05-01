@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/go-chi/chi/v5 v5.2.5
-	github.com/lrstanley/x/sync v0.0.0-20260331013828-98de5249208d
+	github.com/lrstanley/x/sync v0.0.0-20260430041455-3dc196cd51f1
 	github.com/prometheus/client_golang v1.23.2
 )
 
