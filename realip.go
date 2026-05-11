@@ -185,6 +185,7 @@ func (c *RealIPConfig) Validate() error {
 }
 
 // FromStringOpts parses a list of string options and updates the config accordingly.
+// Each element may contain comma-separated tokens (whitespace around commas is trimmed).
 // See [UseRealIPStringOpts] for supported options.
 func (c *RealIPConfig) FromStringOpts(options []string) error {
 	if len(options) == 0 {
@@ -193,6 +194,17 @@ func (c *RealIPConfig) FromStringOpts(options []string) error {
 	}
 
 	options = text.Map(options, strings.TrimSpace, strings.ToLower)
+
+	var expanded []string
+	for _, opt := range options {
+		for part := range strings.SplitSeq(opt, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				expanded = append(expanded, part)
+			}
+		}
+	}
+	options = expanded
 
 	for _, option := range options {
 		switch option {
@@ -232,6 +244,8 @@ func (c *RealIPConfig) FromStringOpts(options []string) error {
 //   - "*", "any", "all": trust any IP and use X-Forwarded-For header.
 //   - "local", "localhost", "bogon", "internal", "private": trust private IP ranges.
 //   - any other string is treated as a trusted IP or CIDR.
+//
+// Options may be split across slice elements and/or comma-separated within an element.
 //
 // If no options are passed in, [DefaultRealIPConfig] is used.
 func UseRealIPStringOpts(options []string) func(next http.Handler) http.Handler {

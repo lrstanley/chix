@@ -232,6 +232,57 @@ func FuzzUseRealStringOpts(f *testing.F) {
 	})
 }
 
+func TestUseRealIPStringOptsCommaSeparatedTrustedCIDRS(t *testing.T) {
+	args := []string{
+		"x-forwarded-for",
+		"8.0.0.0/8, 9.0.0.0/8",
+		"11.0.0.0/8",
+	}
+
+	tests := []struct {
+		name       string
+		remoteAddr string
+		wantRealIP string
+	}{
+		{
+			name:       "proxy-in-first-csv-range",
+			remoteAddr: "8.1.2.3:12345",
+			wantRealIP: "1.1.1.1",
+		},
+		{
+			name:       "proxy-in-second-csv-range",
+			remoteAddr: "9.1.2.3:12345",
+			wantRealIP: "1.1.1.1",
+		},
+		{
+			name:       "proxy-in-separate-slice-cidr",
+			remoteAddr: "11.1.2.3:12345",
+			wantRealIP: "1.1.1.1",
+		},
+		{
+			name:       "proxy-not-in-any-listed-cidr",
+			remoteAddr: "10.1.2.3:12345",
+			wantRealIP: "10.1.2.3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+			req.RemoteAddr = tt.remoteAddr
+			req.Header.Set("X-Forwarded-For", "1.1.1.1")
+
+			handler := UseRealIPStringOpts(args)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				if r.RemoteAddr != tt.wantRealIP {
+					t.Errorf("RemoteAddr = %q, want %q", r.RemoteAddr, tt.wantRealIP)
+				}
+			}))
+
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+		})
+	}
+}
+
 func TestUseRealStringOpts(t *testing.T) {
 	for _, tt := range testsRealIP {
 		t.Run(tt.name, func(t *testing.T) {
