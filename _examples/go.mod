@@ -5,13 +5,13 @@ go 1.26.0
 require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/lrstanley/chix/v2 v2.0.0-beta.3
-	github.com/lrstanley/chix/xauth/v2 v2.0.0-beta.0
-	github.com/lrstanley/clix/v2 v2.0.0-beta.1
+	github.com/lrstanley/chix/xauth/v2 v2.0.0-beta.3
+	github.com/lrstanley/clix/v2 v2.0.1
 	github.com/markbates/goth v1.82.0
 )
 
 require (
-	github.com/alecthomas/kong v1.14.0 // indirect
+	github.com/alecthomas/kong v1.15.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-playground/form/v4 v4.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
