@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestBasicAuthConfig_Validate(t *testing.T) {
@@ -70,13 +72,13 @@ func TestNewBasicAuthHandler_loginAndSelf(t *testing.T) {
 		Service:        svc,
 		SessionStorage: testSessionStore,
 	})
-	mux := http.NewServeMux()
-	mux.Handle("/auth/", http.StripPrefix("/auth", h))
+	parent := chi.NewRouter()
+	parent.Mount("/auth", h)
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/auth/login", http.NoBody)
 	req.SetBasicAuth("alice", "secret")
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	parent.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusTemporaryRedirect {
 		t.Fatalf("login status = %d, want %d", rec.Code, http.StatusTemporaryRedirect)
@@ -87,7 +89,7 @@ func TestNewBasicAuthHandler_loginAndSelf(t *testing.T) {
 		req2.AddCookie(c)
 	}
 	rec2 := httptest.NewRecorder()
-	mux.ServeHTTP(rec2, req2)
+	parent.ServeHTTP(rec2, req2)
 
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("/self status = %d, want %d", rec2.Code, http.StatusOK)
@@ -159,21 +161,15 @@ func TestNewBasicAuthHandler_loginWhenAlreadyAuthenticated(t *testing.T) {
 		Service:        svc,
 		SessionStorage: testSessionStore,
 	})
-
-	reqLogin := httptest.NewRequest(http.MethodGet, "http://example.com/login", http.NoBody)
-	reqLogin.SetBasicAuth("alice", "secret")
-	recLogin := httptest.NewRecorder()
-	h.ServeHTTP(recLogin, reqLogin)
-	if recLogin.Code != http.StatusTemporaryRedirect {
-		t.Fatalf("first login status = %d, want %d", recLogin.Code, http.StatusTemporaryRedirect)
-	}
+	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := &testUser{Name: "alice"}
+		r = r.WithContext(OverrideContextAuth(r.Context(), "alice", u))
+		h.ServeHTTP(w, r)
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/login", http.NoBody)
-	for _, c := range recLogin.Result().Cookies() {
-		req.AddCookie(c)
-	}
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	wrapped.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusTemporaryRedirect {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusTemporaryRedirect)

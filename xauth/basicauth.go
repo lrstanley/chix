@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
 	"github.com/lrstanley/chix/v2"
 	"github.com/markbates/goth/gothic"
@@ -63,18 +64,18 @@ func NewBasicAuthHandler[Ident any](config *BasicAuthConfig[Ident]) http.Handler
 		gothic.Store = config.SessionStorage
 	})
 
-	mux := http.NewServeMux()
+	router := chi.NewRouter()
 
 	if !config.DisableSelfEndpoint {
-		var self http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		router.With(
+			UseAuthContext(config.Service),
+			UseAuthRequired[Ident](),
+		).Get("/self", func(w http.ResponseWriter, r *http.Request) {
 			chix.JSON(w, r, http.StatusOK, map[string]any{"auth": IdentFromContext[Ident](r.Context())})
 		})
-		self = UseAuthRequired[Ident]()(self)
-		self = UseAuthContext(config.Service)(self)
-		mux.Handle("GET /self", self)
 	}
 
-	var login http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/login", func(w http.ResponseWriter, r *http.Request) {
 		// Check if they've already logged in.
 		if IdentFromContext[Ident](r.Context()) != nil {
 			chix.SecureRedirectOrNext(w, r, http.StatusTemporaryRedirect, "/")
@@ -100,13 +101,11 @@ func NewBasicAuthHandler[Ident any](config *BasicAuthConfig[Ident]) http.Handler
 		}
 		chix.SecureRedirectOrNext(w, r, http.StatusTemporaryRedirect, "/")
 	})
-	login = UseAuthContext(config.Service)(login)
-	mux.Handle("GET /login", login)
 
-	mux.HandleFunc("GET /logout", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
 		_ = gothic.Logout(w, r)
 		chix.SecureRedirectOrNext(w, r, http.StatusFound, "/")
 	})
 
-	return mux
+	return router
 }

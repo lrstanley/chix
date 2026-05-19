@@ -1,6 +1,6 @@
 // Copyright (c) Liam Stanley <liam@liam.sh>. All rights reserved. Use of
-// this source code is governed by the MIT license that can be found in
-// the LICENSE file.
+// this source code is governed by the MIT license that can be found in the
+// LICENSE file.
 
 package xauth
 
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
 	"github.com/lrstanley/chix/v2"
 	"github.com/markbates/goth"
@@ -61,18 +62,18 @@ func NewGothHandler[Ident any, ID comparable](config *GothConfig[Ident, ID]) htt
 		gothic.Store = config.SessionStorage
 	})
 
-	mux := http.NewServeMux()
+	router := chi.NewRouter()
 
 	if !config.DisableSelfEndpoint {
-		var self http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		router.With(
+			UseAuthContext(config.Service),
+			UseAuthRequired[Ident](),
+		).Get("/self", func(w http.ResponseWriter, r *http.Request) {
 			chix.JSON(w, r, http.StatusOK, map[string]any{"auth": IdentFromContext[Ident](r.Context())})
 		})
-		self = UseAuthRequired[Ident]()(self)
-		self = UseAuthContext(config.Service)(self)
-		mux.Handle("GET /self", self)
 	}
 
-	mux.HandleFunc("GET /providers", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/providers", func(w http.ResponseWriter, r *http.Request) {
 		providers := goth.GetProviders()
 		data := make([]string, 0, len(providers))
 		for _, p := range providers {
@@ -92,11 +93,11 @@ func NewGothHandler[Ident any, ID comparable](config *GothConfig[Ident, ID]) htt
 		})
 	}
 
-	mux.Handle("GET /providers/{provider}", validateProvider(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.With(validateProvider).Get("/providers/{provider}", func(w http.ResponseWriter, r *http.Request) {
 		gothic.BeginAuthHandler(w, r)
-	})))
+	})
 
-	mux.Handle("GET /providers/{provider}/callback", validateProvider(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.With(validateProvider).Get("/providers/{provider}/callback", func(w http.ResponseWriter, r *http.Request) {
 		guser, err := gothic.CompleteUserAuth(w, r)
 		if err != nil {
 			chix.ErrorWithCode(w, r, http.StatusBadRequest, err)
@@ -112,12 +113,12 @@ func NewGothHandler[Ident any, ID comparable](config *GothConfig[Ident, ID]) htt
 			return
 		}
 		chix.SecureRedirectOrNext(w, r, http.StatusTemporaryRedirect, "/")
-	})))
+	})
 
-	mux.HandleFunc("GET /logout", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
 		_ = gothic.Logout(w, r)
 		chix.SecureRedirectOrNext(w, r, http.StatusFound, "/")
 	})
 
-	return mux
+	return router
 }
