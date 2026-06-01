@@ -8,7 +8,7 @@ require (
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.30.2
-	github.com/lrstanley/x/sync v0.0.0-20260514072400-85ffc850d28d
+	github.com/lrstanley/x/sync v0.0.0-20260529065950-23013a958022
 )
 
 require (
