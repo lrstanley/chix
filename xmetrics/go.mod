@@ -3,7 +3,7 @@ module github.com/lrstanley/chix/v2/xmetrics
 go 1.26.0
 
 require (
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/lrstanley/x/sync v0.0.0-20260514072400-85ffc850d28d
 	github.com/prometheus/client_golang v1.23.2
 )

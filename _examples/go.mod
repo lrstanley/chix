@@ -3,7 +3,7 @@ module github.com/lrstanley/chix/v2/_examples
 go 1.26.0
 
 require (
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/lrstanley/chix/v2 v2.0.0-beta.5
 	github.com/lrstanley/chix/xauth/v2 v2.0.0-beta.3
 	github.com/lrstanley/clix/v2 v2.0.1
