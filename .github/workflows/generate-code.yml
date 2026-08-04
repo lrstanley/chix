@@ -17,7 +17,7 @@ jobs:
       - uses: lrstanley/.github/composite/install-go@master
         with:
           version: ${{ steps.goversion.outputs.version }}
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: lrstanley/.github/composite/invoke-task@master
         with:
           task: go-prepare,prepare
