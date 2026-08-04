@@ -30,7 +30,8 @@ func DefaultRequestDecoder() RequestDecoder {
 			defer r.Body.Close()
 		}
 
-		jsonDecoder := GetConfig(r.Context()).GetJSONDecoder()
+		cfg := GetConfig(r.Context())
+		jsonDecoder := cfg.GetJSONDecoder()
 
 		err = dec.Decode(v, r.Form)
 
@@ -39,7 +40,7 @@ func DefaultRequestDecoder() RequestDecoder {
 			case strings.HasPrefix(r.Header.Get("Content-Type"), "application/json"):
 				err = jsonDecoder(r, v)
 			case strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
-				err = r.ParseMultipartForm(4 << 20) // 4MB
+				err = r.ParseMultipartForm(multipartMaxMemory(cfg.GetMaxRequestBodyBytes()))
 				if err == nil {
 					err = dec.Decode(v, r.MultipartForm.Value)
 				}
@@ -156,6 +157,13 @@ type Validatable interface {
 // scenes, both go-playground/form and go-playground/validator are used to perform
 // the necessary operations.
 //
+// Request body size is limited by [Config.GetMaxRequestBodyBytes] before decoding.
+// When [Config.Use] or [UseMaxBodyBytes] middleware is installed, the limit is
+// applied at the middleware layer; [Bind] and [DefaultJSONDecoder] reuse that limit
+// when the body was already wrapped. On overflow, [Bind] returns a [ResolvedError]
+// with HTTP 413 — use [Error] to write the response. Struct validation tags (e.g.
+// validate:"max=25") run after decoding and do not bound request body size.
+//
 // Example:
 //
 //	type User struct {
@@ -188,6 +196,12 @@ type Validatable interface {
 //   - https://github.com/go-playground/validator#fields
 //   - https://github.com/go-playground/form#examples
 func Bind(r *http.Request, v any) (err error) {
+	cfg := GetConfig(r.Context())
+
+	if err = limitRequestBody(r, cfg.GetMaxRequestBodyBytes(), nil); err != nil {
+		return err
+	}
+
 	err = r.ParseForm()
 	if err != nil {
 		return &ResolvedError{
@@ -197,12 +211,10 @@ func Bind(r *http.Request, v any) (err error) {
 		}
 	}
 
-	cfg := GetConfig(r.Context())
-
 	if dec := cfg.GetRequestDecoder(); dec != nil {
 		err = dec(r, v)
 		if err != nil {
-			return err
+			return mapOutboundError(err)
 		}
 	}
 
@@ -214,4 +226,20 @@ func Bind(r *http.Request, v any) (err error) {
 	}
 
 	return nil
+}
+
+func mapOutboundError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if re, ok := IsResolvedError(err); ok {
+		if mapped := bodyLimitErrorResolver(re); mapped != nil {
+			return mapped
+		}
+		return re
+	}
+	if re, ok := resolveBodyLimitError(err); ok {
+		return re
+	}
+	return err
 }

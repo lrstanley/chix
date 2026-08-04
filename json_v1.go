@@ -14,8 +14,10 @@ import (
 
 func DefaultJSONDecoder() JSONDecoder {
 	return func(r *http.Request, v any) error {
-		jdec := json.NewDecoder(r.Body)
-		return jdec.Decode(v)
+		if err := limitRequestBody(r, GetConfig(r.Context()).GetMaxRequestBodyBytes(), nil); err != nil {
+			return err
+		}
+		return json.NewDecoder(r.Body).Decode(v)
 	}
 }
 

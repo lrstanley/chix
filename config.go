@@ -27,6 +27,8 @@ type Config struct {
 
 	requestIDHeader string
 
+	maxRequestBodyBytes int64
+
 	logger *slog.Logger
 }
 
@@ -36,7 +38,7 @@ func NewConfig() *Config {
 		apiBasePath: "/",
 
 		maskPrivateErrors: true,
-		errorResolvers:    nil,
+		errorResolvers:    []ErrorResolverFn{bodyLimitErrorResolver},
 		errorHandler:      DefaultErrorHandler,
 
 		requestDecoder:   DefaultRequestDecoder(),
@@ -45,6 +47,8 @@ func NewConfig() *Config {
 		jsonEncoder:      DefaultJSONEncoder(),
 
 		requestIDHeader: "X-Request-Id",
+
+		maxRequestBodyBytes: DefaultMaxRequestBodyBytes,
 
 		logger: slog.New(slog.DiscardHandler),
 	}
@@ -66,16 +70,21 @@ func (c *Config) Clone() *Config {
 
 		requestIDHeader: c.requestIDHeader,
 
+		maxRequestBodyBytes: c.maxRequestBodyBytes,
+
 		logger: c.logger,
 	}
 	return nc
 }
 
-// Use returns a middleware that sets the [Config] in the context.
+// Use returns middleware that sets this [Config] in the request context and applies
+// the configured maximum request body size.
 func (c *Config) Use() func(next http.Handler) http.Handler {
+	bodyLimit := UseMaxBodyBytes(c.GetMaxRequestBodyBytes())
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKeyConfig{}, c)))
+			r = r.WithContext(context.WithValue(r.Context(), contextKeyConfig{}, c))
+			bodyLimit(next).ServeHTTP(w, r)
 		})
 	}
 }
@@ -112,7 +121,9 @@ func (c *Config) GetErrorResolvers() []ErrorResolverFn {
 	return c.errorResolvers
 }
 
-// SetErrorResolvers sets the error resolvers.
+// SetErrorResolvers sets the error resolvers. This replaces any existing resolvers,
+// including the default [bodyLimitErrorResolver]. Use [Config.AddErrorResolvers] to
+// append resolvers while keeping defaults.
 func (c *Config) SetErrorResolvers(resolvers ...ErrorResolverFn) *Config {
 	nc := c.Clone()
 	nc.errorResolvers = resolvers
@@ -211,6 +222,22 @@ func (c *Config) SetRequestIDHeader(header string) *Config {
 	}
 	nc := c.Clone()
 	nc.requestIDHeader = header
+	return nc
+}
+
+// GetMaxRequestBodyBytes returns the configured maximum request body size in bytes.
+// Defaults to [DefaultMaxRequestBodyBytes] (4 MiB). A value <= 0 disables limiting
+// on the request body reader and multipart parsing memory cap.
+func (c *Config) GetMaxRequestBodyBytes() int64 {
+	return c.maxRequestBodyBytes
+}
+
+// SetMaxRequestBodyBytes sets the maximum request body size in bytes. Defaults to
+// [DefaultMaxRequestBodyBytes] (4 MiB). A value <= 0 disables limiting on the
+// request body reader and multipart parsing memory cap.
+func (c *Config) SetMaxRequestBodyBytes(n int64) *Config {
+	nc := c.Clone()
+	nc.maxRequestBodyBytes = n
 	return nc
 }
 

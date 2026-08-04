@@ -15,6 +15,9 @@ import (
 
 func DefaultJSONDecoder(opts ...json.Options) JSONDecoder {
 	return func(r *http.Request, v any) error {
+		if err := limitRequestBody(r, GetConfig(r.Context()).GetMaxRequestBodyBytes(), nil); err != nil {
+			return err
+		}
 		return json.UnmarshalRead(r.Body, v, opts...)
 	}
 }
