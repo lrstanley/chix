@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/lrstanley/chix/v2 v2.0.0-beta.5
+	github.com/lrstanley/chix/v2 v2.0.0-beta.6
 	github.com/markbates/goth v1.82.0
 )
 

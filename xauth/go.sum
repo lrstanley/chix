@@ -24,8 +24,8 @@ github.com/gorilla/sessions v1.4.0 h1:kpIYOp/oi6MG/p5PgxApU8srsSw9tuFbt46Lt7auzq
 github.com/gorilla/sessions v1.4.0/go.mod h1:FLWm50oby91+hl7p/wRxDth9bWSuk0qVL2emc7lT5ik=
 github.com/leodido/go-urn v1.5.0 h1:pLqT2kq1zpHW/1D18QMjMpdtX7cekxqtJJjg5ANyWw0=
 github.com/leodido/go-urn v1.5.0/go.mod h1:9BORnCDhdPBJNDEX+w1bJisa8yOKYi116VeO96s4ifE=
-github.com/lrstanley/chix/v2 v2.0.0-beta.5 h1:k5/ziau5nSgg++Wq7xeacUP4WiAY8Wu0mBE9nRgpyfU=
-github.com/lrstanley/chix/v2 v2.0.0-beta.5/go.mod h1:i7W0bWKG89Y374EIKIofkWyZs94naLH/nqdGIvRaQ4w=
+github.com/lrstanley/chix/v2 v2.0.0-beta.6 h1:x65YqBlplUap3eaRfmiKhKEdr2IDWs72MMNLW2TEXNk=
+github.com/lrstanley/chix/v2 v2.0.0-beta.6/go.mod h1:MnS4dxKiZOrJnZdroqyeP+M/XRRa8swhDj32TySWl50=
 github.com/lrstanley/x/sync v0.0.0-20260529065950-23013a958022 h1:wI/2E/WzAb3BOJHe8xxIIcrBo7sKe8SvC13fjLBXuic=
 github.com/lrstanley/x/sync v0.0.0-20260529065950-23013a958022/go.mod h1:q71F0fHcGckHKcLWPLgD/monxNSFE+2bRJcMAiq7fGM=
 github.com/markbates/goth v1.82.0 h1:8j/c34AjBSTNzO7zTsOyP5IYCQCMBTRBHAbBt/PI0bQ=
