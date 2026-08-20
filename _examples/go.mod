@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/go-chi/chi/v5 v5.3.1
-	github.com/lrstanley/chix/v2 v2.0.0-beta.6
+	github.com/lrstanley/chix/v2 v2.0.0-beta.7
 	github.com/lrstanley/chix/xauth/v2 v2.0.0-beta.6
 	github.com/lrstanley/clix/v2 v2.0.3
 	github.com/markbates/goth v1.82.0
@@ -22,7 +22,7 @@ require (
 	github.com/gorilla/sessions v1.4.0 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect
 	github.com/lmittmann/tint v1.2.0 // indirect
-	github.com/lrstanley/x/sync v0.0.0-20260530031906-d0cef47dbceb // indirect
+	github.com/lrstanley/x/sync v0.0.0-20260820045812-c29a6d098dc7 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
