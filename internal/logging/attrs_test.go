@@ -135,11 +135,11 @@ func TestGroupAttrsRecursive(t *testing.T) {
 		{
 			name: "single-attribute-with-delimiter",
 			input: []slog.Attr{
-				slog.String("single>level", "value"),
+				slog.String("single>leaf", "value"),
 			},
 			expected: []slog.Attr{
 				slog.GroupAttrs("single",
-					slog.String("level", "value"),
+					slog.String("leaf", "value"),
 				),
 			},
 		},

@@ -82,7 +82,7 @@ go get -u github.com/lrstanley/chix/v2@latest
 - RealIP middleware (trusted proxy chain parsing; not "trust any `X-Forwarded-For`").
 - Private IP middleware for internal-only routes.
 - Request ID middleware (client header or generated ID; header name configurable on `Config`).
-- Rendering helpers: JSON, XML, CSV, and streaming CSV via iterators -- all support `?pretty=true` where applicable. JSON uses the standard library by default; `encoding/json/v2` automatically used when compiled with support for it.
+- Rendering helpers: JSON, XML, CSV, and streaming CSV via iterators -- all support `?pretty=true` where applicable.
 - Optional subpackage `xmetrics`: Prometheus HTTP request metrics (duration, count, bytes) keyed by chi route pattern.
 - Auth (`xauth` subpackage):
   - [markbates/goth](https://github.com/markbates/goth) OAuth with many providers, plus a separate basic-auth flow.

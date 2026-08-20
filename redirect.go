@@ -17,6 +17,27 @@ const (
 	nextURLExpiration = 24 * time.Hour
 )
 
+func requestHost(r *http.Request) string {
+	host := r.Host
+	if i := strings.Index(host, ":"); i > -1 {
+		host = host[:i]
+	}
+	return host
+}
+
+func nextURLCookie(r *http.Request, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{ //nolint:gosec // Secure is set when the request is TLS
+		Name:     nextSessionKey,
+		Value:    value,
+		Path:     "/",
+		MaxAge:   maxAge,
+		Domain:   requestHost(r),
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	}
+}
+
 // UseNextURL is a middleware that will store the current URL provided via the
 // "next" query parameter, as a cookie in the response, for use with multi-step
 // authentication flows. This allows the user to be redirected back to the original
@@ -26,26 +47,7 @@ func UseNextURL() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if n := r.URL.Query().Get("next"); n != "" {
-				host := r.Host
-				if i := strings.Index(host, ":"); i > -1 {
-					host = host[:i]
-				}
-
-				var secure bool
-				if r.TLS != nil {
-					secure = true
-				}
-
-				http.SetCookie(w, &http.Cookie{
-					Name:     nextSessionKey,
-					Value:    n,
-					Path:     "/",
-					MaxAge:   int(nextURLExpiration.Seconds()),
-					Domain:   host,
-					HttpOnly: true,
-					Secure:   secure,
-					SameSite: http.SameSiteLaxMode,
-				})
+				http.SetCookie(w, nextURLCookie(r, n, int(nextURLExpiration.Seconds())))
 			}
 			next.ServeHTTP(w, r)
 		})
@@ -80,7 +82,7 @@ func SecureRedirect(w http.ResponseWriter, r *http.Request, status int, target s
 	}
 
 	if next.Scheme == "" && next.Host == "" {
-		http.Redirect(w, r, next.String(), status)
+		http.Redirect(w, r, next.String(), status) //nolint:gosec // relative same-host path
 		return
 	}
 
@@ -95,11 +97,7 @@ func SecureRedirect(w http.ResponseWriter, r *http.Request, status int, target s
 		next.Scheme = "https"
 	}
 
-	reqHost := r.Host
-	if i := strings.Index(reqHost, ":"); i > -1 {
-		reqHost = reqHost[:i]
-	}
-
+	reqHost := requestHost(r)
 	nextHost := next.Host
 	if i := strings.Index(nextHost, ":"); i > -1 {
 		nextHost = nextHost[:i]
@@ -110,15 +108,8 @@ func SecureRedirect(w http.ResponseWriter, r *http.Request, status int, target s
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     nextSessionKey,
-		Path:     "/",
-		MaxAge:   -1,
-		Domain:   reqHost,
-		HttpOnly: true,
-	})
-
-	http.Redirect(w, r, next.String(), status)
+	http.SetCookie(w, nextURLCookie(r, "", -1))
+	http.Redirect(w, r, next.String(), status) //nolint:gosec // host and scheme already validated
 }
 
 // SecureRedirectOrNext is a helper function that will redirect to the next URL if it
@@ -139,19 +130,7 @@ func SecureRedirectOrNext(w http.ResponseWriter, r *http.Request, status int, fa
 
 		// Check session cookie next.
 		if n, err := r.Cookie(nextSessionKey); err == nil && n.Value != "" {
-			// Clear cookie.
-			reqHost := r.Host
-			if i := strings.Index(reqHost, ":"); i > -1 {
-				reqHost = reqHost[:i]
-			}
-			http.SetCookie(w, &http.Cookie{
-				Name:     nextSessionKey,
-				Path:     "/",
-				Value:    "",
-				Expires:  time.Unix(0, 0),
-				Domain:   reqHost,
-				HttpOnly: true,
-			})
+			http.SetCookie(w, nextURLCookie(r, "", -1))
 			SecureRedirect(w, r, status, n.Value)
 			return
 		}

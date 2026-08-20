@@ -5,7 +5,7 @@
 package chix
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"encoding/xml"
 	"io"
 	"iter"
@@ -31,8 +31,7 @@ func testJSONMarshalEqual[T any](t *testing.T, input T, body io.ReadCloser, shou
 		return false
 	}
 
-	dec := json.NewDecoder(body)
-	if err = dec.Decode(&out); err != nil {
+	if err = json.UnmarshalRead(body, &out); err != nil {
 		t.Errorf("error decoding response body: %v", err)
 		return false
 	}

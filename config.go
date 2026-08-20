@@ -183,8 +183,8 @@ func (c *Config) GetJSONDecoder() JSONDecoder {
 	return c.jsonDecoder
 }
 
-// SetJSONDecoder sets the JSON decoder. Defaults to encoding/json or encoding/json/v2,
-// if the experimental encoding/json/v2 is enabled for the build.
+// SetJSONDecoder sets the JSON decoder. Defaults to [DefaultJSONDecoder]
+// (encoding/json/v2).
 func (c *Config) SetJSONDecoder(decoder JSONDecoder) *Config {
 	if decoder == nil {
 		return c
@@ -194,13 +194,13 @@ func (c *Config) SetJSONDecoder(decoder JSONDecoder) *Config {
 	return nc
 }
 
-// GetJSONEncoder returns the configured JSON decoder.
+// GetJSONEncoder returns the configured JSON encoder.
 func (c *Config) GetJSONEncoder() JSONEncoder {
 	return c.jsonEncoder
 }
 
-// SetJSONEncoder sets the JSON encoder. Defaults to encoding/json or encoding/json/v2,
-// if the experimental encoding/json/v2 is enabled for the build.
+// SetJSONEncoder sets the JSON encoder. Defaults to [DefaultJSONEncoder]
+// (encoding/json/v2).
 func (c *Config) SetJSONEncoder(encoder JSONEncoder) *Config {
 	if encoder == nil {
 		return c

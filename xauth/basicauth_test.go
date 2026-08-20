@@ -5,7 +5,7 @@
 package xauth
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -98,7 +98,7 @@ func TestNewBasicAuthHandler_loginAndSelf(t *testing.T) {
 	var payload struct {
 		Auth *testUser `json:"auth"`
 	}
-	if err := json.NewDecoder(rec2.Body).Decode(&payload); err != nil {
+	if err := json.UnmarshalRead(rec2.Body, &payload); err != nil {
 		t.Fatal(err)
 	}
 	if payload.Auth == nil || payload.Auth.Name != "alice" {

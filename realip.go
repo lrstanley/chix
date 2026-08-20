@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/lrstanley/chix/v2/internal/text"
@@ -35,8 +36,8 @@ func RealIPXForwardedFor() RealIPHeaderParser {
 		// and stop when find untrusted proxy.
 		var raw string
 		ips := make([]net.IP, 0, len(items))
-		for i := len(items) - 1; i >= 0; i-- {
-			raw = strings.TrimSpace(items[i])
+		for _, item := range slices.Backward(items) {
+			raw = strings.TrimSpace(item)
 			ip := net.ParseIP(raw)
 			if ip == nil {
 				return nil

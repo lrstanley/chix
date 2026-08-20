@@ -40,7 +40,7 @@ func DefaultRequestDecoder() RequestDecoder {
 			case strings.HasPrefix(r.Header.Get("Content-Type"), "application/json"):
 				err = jsonDecoder(r, v)
 			case strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"):
-				err = r.ParseMultipartForm(multipartMaxMemory(cfg.GetMaxRequestBodyBytes()))
+				err = r.ParseMultipartForm(multipartMaxMemory(cfg.GetMaxRequestBodyBytes())) //nolint:gosec // body size already capped
 				if err == nil {
 					err = dec.Decode(v, r.MultipartForm.Value)
 				}
@@ -50,8 +50,7 @@ func DefaultRequestDecoder() RequestDecoder {
 		}
 
 		if err != nil {
-			var invalidDecoderError *form.InvalidDecoderError
-			if errors.As(err, &invalidDecoderError) {
+			if _, ok := errors.AsType[*form.InvalidDecoderError](err); ok {
 				return &ResolvedError{
 					Err:        err,
 					StatusCode: http.StatusInternalServerError,
@@ -108,16 +107,14 @@ func DefaultRequestValidator() RequestValidator {
 
 		err := structValidator.StructCtx(r.Context(), v)
 		if err != nil {
-			var invalidValidationError *validator.InvalidValidationError
-			if errors.As(err, &invalidValidationError) {
+			if _, ok := errors.AsType[*validator.InvalidValidationError](err); ok {
 				return &ResolvedError{
 					Err:        err,
 					StatusCode: http.StatusInternalServerError,
 				}
 			}
 
-			var validationErrors *validator.ValidationErrors
-			if errors.As(err, &validationErrors) {
+			if validationErrors, ok := errors.AsType[*validator.ValidationErrors](err); ok {
 				var errs []error
 				for _, err := range *validationErrors {
 					errs = append(errs, &translationWrappedError{
@@ -195,15 +192,14 @@ type Validatable interface {
 // References:
 //   - https://github.com/go-playground/validator#fields
 //   - https://github.com/go-playground/form#examples
-func Bind(r *http.Request, v any) (err error) {
+func Bind(r *http.Request, v any) error {
 	cfg := GetConfig(r.Context())
 
-	if err = limitRequestBody(r, cfg.GetMaxRequestBodyBytes(), nil); err != nil {
+	if err := limitRequestBody(r, cfg.GetMaxRequestBodyBytes(), nil); err != nil {
 		return err
 	}
 
-	err = r.ParseForm()
-	if err != nil {
+	if err := r.ParseForm(); err != nil {
 		return &ResolvedError{
 			Err:        err,
 			StatusCode: http.StatusBadRequest,
@@ -212,15 +208,13 @@ func Bind(r *http.Request, v any) (err error) {
 	}
 
 	if dec := cfg.GetRequestDecoder(); dec != nil {
-		err = dec(r, v)
-		if err != nil {
+		if err := dec(r, v); err != nil {
 			return mapOutboundError(err)
 		}
 	}
 
 	if val := cfg.GetRequestValidator(); val != nil {
-		err = val(r, v)
-		if err != nil {
+		if err := val(r, v); err != nil {
 			return err
 		}
 	}

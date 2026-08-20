@@ -5,7 +5,7 @@
 package xauth
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -76,7 +76,7 @@ func TestNewGothHandler_providers(t *testing.T) {
 	var payload struct {
 		Providers []string `json:"providers"`
 	}
-	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
+	if err := json.UnmarshalRead(rec.Body, &payload); err != nil {
 		t.Fatal(err)
 	}
 	if payload.Providers == nil {

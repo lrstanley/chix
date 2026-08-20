@@ -45,7 +45,7 @@ func TestNewConfigBodyLimitErrorResolver(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 	req = requestWithConfig(cfg, req)
 
 	Error(rec, req, &http.MaxBytesError{Limit: 1024})
@@ -64,7 +64,7 @@ func TestBodyLimitErrorResolverAllowsChain(t *testing.T) {
 	})
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	req = requestWithConfig(cfg, req)
 
 	Error(rec, req, errors.New("some other error"))
@@ -86,7 +86,7 @@ func TestBodyLimitErrorResolverPrecedesChain(t *testing.T) {
 	})
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 	req = requestWithConfig(cfg, req)
 
 	Error(rec, req, &http.MaxBytesError{Limit: 100})
@@ -189,8 +189,7 @@ func TestBindContentLengthEarlyReject(t *testing.T) {
 	if re.StatusCode != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d, want %d", re.StatusCode, http.StatusRequestEntityTooLarge)
 	}
-	var maxBytesErr *http.MaxBytesError
-	if !errors.As(re.Err, &maxBytesErr) {
+	if _, isMaxBytes := errors.AsType[*http.MaxBytesError](re.Err); !isMaxBytes {
 		t.Fatalf("Err = %T, want *http.MaxBytesError", re.Err)
 	}
 	if !re.Public() {
@@ -332,7 +331,7 @@ func TestConflictingLimitsStricterWins(t *testing.T) {
 	body := []byte(`{"name":"` + strings.Repeat("a", bindLimit+100) + `"}`)
 
 	cfg := NewConfig().SetMaxRequestBodyBytes(bindLimit)
-	handler := UseMaxBodyBytes(middlewareLimit)(cfg.Use()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := UseMaxBodyBytes(middlewareLimit)(cfg.Use()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		var v struct {
 			Name string `json:"name"`
 		}
@@ -385,7 +384,7 @@ func TestConfigUseProtectsRawBodyRead(t *testing.T) {
 	body := bytes.Repeat([]byte("b"), limit+1)
 
 	cfg := NewConfig().SetMaxRequestBodyBytes(limit)
-	handler := cfg.Use()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := cfg.Use()(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		_, err := io.ReadAll(r.Body)
 		if err == nil {
 			t.Fatal("expected read error for oversized body")
@@ -440,7 +439,7 @@ func TestBindMultipartOversize(t *testing.T) {
 func TestBodyLimitErrorResolverPublic(t *testing.T) {
 	cfg := NewConfig()
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	req := httptest.NewRequest(http.MethodPost, "/", http.NoBody)
 	req = requestWithConfig(cfg, req)
 
 	maxErr := &http.MaxBytesError{Limit: 100}

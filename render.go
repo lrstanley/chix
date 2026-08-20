@@ -27,8 +27,9 @@ var renderBufferPool = pool.Pool[*bytes.Buffer]{
 	},
 }
 
-// JSON marshals 'v' to JSON, and setting the Content-Type as application/json.
-// Note that this does NOT auto-escape HTML.
+// JSON marshals 'v' to JSON using [Config.GetJSONEncoder] (defaults to
+// encoding/json/v2), and setting the Content-Type as application/json. Note that
+// this does NOT auto-escape HTML.
 //
 // JSON also supports indented output when the origin request has "?pretty=true"
 // or similar.
@@ -51,7 +52,7 @@ func XML(w http.ResponseWriter, r *http.Request, status int, v any) {
 
 	enc := xml.NewEncoder(buf)
 	if pretty, _ := strconv.ParseBool(r.FormValue("pretty")); pretty {
-		enc.Indent("", "    ")
+		enc.Indent("", "\t")
 	}
 	if err := enc.Encode(v); err != nil {
 		ErrorWithCode(w, r, http.StatusInternalServerError, err)

@@ -148,11 +148,7 @@ func (e *ResolvedError) LogAttrs() []slog.Attr {
 
 // IsResolvedError returns true if the error is a [ResolvedError].
 func IsResolvedError(err error) (resolved *ResolvedError, ok bool) {
-	var rerr *ResolvedError
-	if errors.As(err, &rerr) {
-		return rerr, true
-	}
-	return nil, false
+	return errors.AsType[*ResolvedError](err)
 }
 
 // ErrorResolverFn is a function that resolves an error to a client-facing safe error,
