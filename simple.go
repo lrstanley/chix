@@ -175,3 +175,13 @@ func UseAPIKeyRequired(keys []string, header string) func(next http.Handler) htt
 		})
 	}
 }
+
+// UseWithContext is a middleware that allows hooking into the request context
+// for modification purposes (e.g. injecting values, etc).
+func UseWithContext(fn func(ctx context.Context) context.Context) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(fn(r.Context())))
+		})
+	}
+}

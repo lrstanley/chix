@@ -5,6 +5,7 @@
 package chix
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,6 +58,25 @@ func TestUseDebug(t *testing.T) {
 			handler.ServeHTTP(httptest.NewRecorder(), req)
 		})
 	}
+}
+
+func TestUseWithContext(t *testing.T) {
+	t.Parallel()
+
+	type contextKey struct{}
+	key := contextKey{}
+	const want = "value"
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+	handler := UseWithContext(func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, key, want)
+	})(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		if got := r.Context().Value(key); got != want {
+			t.Errorf("context value = %v, want %v", got, want)
+		}
+	}))
+
+	handler.ServeHTTP(httptest.NewRecorder(), req)
 }
 
 func TestUseIf(t *testing.T) {

@@ -52,7 +52,7 @@ func RealIPXForwardedFor() RealIPHeaderParser {
 // IP address associated with that header.
 func RealIPXRealIP() RealIPHeaderParser {
 	return func(headers http.Header, _ net.IP) []net.IP {
-		if v := parseIP(headers.Get("X-Real-Ip")); v != nil {
+		if v := parseIP(headers.Get("X-Real-IP")); v != nil {
 			return []net.IP{v}
 		}
 		return nil

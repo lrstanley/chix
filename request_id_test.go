@@ -24,7 +24,7 @@ func TestUseRequestID_and_Getters(t *testing.T) {
 			name:       "with-header-default",
 			requestURL: "http://example.com/",
 			setup: func(r *http.Request) http.Handler {
-				r.Header.Set("X-Request-Id", "abc-123")
+				r.Header.Set("X-Request-ID", "abc-123")
 				mw := UseRequestID()
 				return mw(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 					idCtx := GetRequestID(r.Context())
@@ -82,7 +82,7 @@ func TestUseRequestID_and_Getters(t *testing.T) {
 			name:       "or-header-falls-back-without-context",
 			requestURL: "http://example.com/",
 			setup: func(r *http.Request) http.Handler {
-				r.Header.Set("X-Request-Id", "only-in-header")
+				r.Header.Set("X-Request-ID", "only-in-header")
 				return http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 					idHdr := GetRequestIDOrHeader(r.Context(), r)
 					if idHdr != "only-in-header" {

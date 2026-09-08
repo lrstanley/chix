@@ -68,7 +68,7 @@ var loggerTestCases = []struct {
 		},
 		req: func() *http.Request {
 			req := httptest.NewRequest(http.MethodGet, "http://example.com/json", http.NoBody)
-			req.Header.Set("X-Request-Id", "123")
+			req.Header.Set("X-Request-ID", "123")
 			return req
 		},
 		status:       http.StatusOK,
