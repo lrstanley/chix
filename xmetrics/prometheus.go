@@ -56,7 +56,7 @@ func UsePrometheus() func(next http.Handler) http.Handler {
 			labels := *p.Get()
 			defer p.Put(&labels)
 
-			labels["method"] = r.Method
+			labels["method"] = prometheusMethod(r.Method)
 			labels["path"] = chi.RouteContext(r.Context()).RoutePattern()
 			labels["status"] = strconv.Itoa(wrappedWriter.Status())
 
@@ -64,5 +64,16 @@ func UsePrometheus() func(next http.Handler) http.Handler {
 			metricHTTPCount.With(labels).Inc()
 			metricHTTPBytes.With(labels).Add(float64(wrappedWriter.BytesWritten()))
 		})
+	}
+}
+
+func prometheusMethod(method string) string {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut,
+		http.MethodPatch, http.MethodDelete, http.MethodConnect,
+		http.MethodOptions, http.MethodTrace:
+		return method
+	default:
+		return "unknown"
 	}
 }
