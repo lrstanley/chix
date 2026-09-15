@@ -16,8 +16,8 @@ github.com/go-playground/validator/v10 v10.30.4 h1:9Rcod2ZPO6mOEG6b4GqyoHE/H6//Z
 github.com/go-playground/validator/v10 v10.30.4/go.mod h1:numpT+RPLE91R9oYWMY/R9zRgJBewr3IXHko4OISPpk=
 github.com/leodido/go-urn v1.5.0 h1:pLqT2kq1zpHW/1D18QMjMpdtX7cekxqtJJjg5ANyWw0=
 github.com/leodido/go-urn v1.5.0/go.mod h1:9BORnCDhdPBJNDEX+w1bJisa8yOKYi116VeO96s4ifE=
-github.com/lrstanley/x/sync v0.0.0-20260825190559-0b57a39177d1 h1:/E6MWmZbRM65D6f+SGjwacWPqFu/Lgw9KvqnHKrDd7A=
-github.com/lrstanley/x/sync v0.0.0-20260825190559-0b57a39177d1/go.mod h1:ZKZnCxzOGaux/A2ihsAgFO6rcTRjirKZRolPLUwx3jY=
+github.com/lrstanley/x/sync v0.0.0-20260912030744-8b2b6a04d46b h1:tNI8BefbiiRLH/rspExvsiyh8/CgpSgzbz2pzNjU9fQ=
+github.com/lrstanley/x/sync v0.0.0-20260912030744-8b2b6a04d46b/go.mod h1:ZKZnCxzOGaux/A2ihsAgFO6rcTRjirKZRolPLUwx3jY=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
