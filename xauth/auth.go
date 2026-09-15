@@ -63,11 +63,14 @@ func getAuthIDFromSession[ID comparable](r *http.Request) *ID {
 	case *float64:
 		v, err = strconv.ParseFloat(key, 64)
 	case *uint:
-		v, err = strconv.ParseUint(key, 10, 64)
+		n, e := strconv.ParseUint(key, 10, 0) // bitSize 0 = uint
+		v, err = uint(n), e
 	case *uint16:
-		v, err = strconv.ParseUint(key, 10, 16)
+		n, e := strconv.ParseUint(key, 10, 16)
+		v, err = uint16(n), e
 	case *uint32:
-		v, err = strconv.ParseUint(key, 10, 32)
+		n, e := strconv.ParseUint(key, 10, 32)
+		v, err = uint32(n), e
 	case *uint64:
 		v, err = strconv.ParseUint(key, 10, 64)
 	default:
@@ -76,8 +79,10 @@ func getAuthIDFromSession[ID comparable](r *http.Request) *ID {
 	if err != nil {
 		return nil
 	}
-
-	id, _ = v.(ID)
+	id, ok := v.(ID)
+	if !ok {
+		return nil
+	}
 	return &id
 }
 
