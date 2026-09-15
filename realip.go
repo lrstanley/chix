@@ -40,7 +40,7 @@ func RealIPXForwardedFor() RealIPHeaderParser {
 			raw = strings.TrimSpace(item)
 			ip := net.ParseIP(raw)
 			if ip == nil {
-				return nil
+				return ips
 			}
 			ips = append(ips, ip)
 		}

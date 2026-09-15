@@ -67,6 +67,27 @@ var testsRealIP = []struct {
 		wantRealIP: "10.1.2.3",
 	},
 	{
+		name:       "ipv4:x-forwarded-for-invalid-token:bogon:trusted",
+		args:       []string{"x-forwarded-for", "local"},
+		headers:    map[string]string{"X-Forwarded-For": "not-an-ip, 8.8.8.8"},
+		remoteAddr: "10.1.1.1:12345",
+		wantRealIP: "8.8.8.8",
+	},
+	{
+		name:       "ipv4:x-forwarded-for-multiple:bogon:trusted-public-client",
+		args:       []string{"x-forwarded-for", "local"},
+		headers:    map[string]string{"X-Forwarded-For": "10.0.0.1, 8.8.8.8"},
+		remoteAddr: "10.1.1.1:12345",
+		wantRealIP: "8.8.8.8",
+	},
+	{
+		name:       "ipv4:x-forwarded-for:bogon:untrusted-spoofed-private",
+		args:       []string{"x-forwarded-for", "local"},
+		headers:    map[string]string{"X-Forwarded-For": "10.0.0.1"},
+		remoteAddr: "8.8.8.8:12345",
+		wantRealIP: "8.8.8.8",
+	},
+	{
 		name:       "ipv6:x-forwarded-for:bogon:trusted-different-protocol",
 		args:       []string{"x-forwarded-for", "local"},
 		headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
@@ -360,6 +381,81 @@ func TestUsePrivateIP(t *testing.T) {
 
 				if !GetContextIP(r.Context()).Equal(parseIP(sanitizeIP(r.RemoteAddr))) {
 					t.Errorf("GetContextIP() = %v, want %v", r.RemoteAddr, GetContextIP(r.Context()))
+				}
+
+				w.WriteHeader(http.StatusOK)
+			})))
+
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Result().StatusCode != tt.statusCode {
+				t.Errorf("UsePrivateIP() returned status %v, want %v", rec.Result().StatusCode, tt.statusCode)
+			}
+		})
+	}
+}
+
+func TestUseRealIPThenUsePrivateIP(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		remoteAddr string
+		headers    map[string]string
+		allowed    bool
+		statusCode int
+	}{
+		{
+			name:       "ipv4:xff-invalid-token:private-peer:denied",
+			remoteAddr: "10.1.1.1:12345",
+			headers:    map[string]string{"X-Forwarded-For": "not-an-ip, 8.8.8.8"},
+			allowed:    false,
+			statusCode: http.StatusForbidden,
+		},
+		{
+			name:       "ipv4:xff-well-formed:private-peer:denied",
+			remoteAddr: "10.1.1.1:12345",
+			headers:    map[string]string{"X-Forwarded-For": "10.0.0.1, 8.8.8.8"},
+			allowed:    false,
+			statusCode: http.StatusForbidden,
+		},
+		{
+			name:       "ipv4:no-xff:private-peer:allowed",
+			remoteAddr: "10.1.1.1:12345",
+			headers:    map[string]string{},
+			allowed:    true,
+			statusCode: http.StatusOK,
+		},
+		{
+			name:       "ipv4:xff-private-only:private-peer:allowed",
+			remoteAddr: "10.1.1.1:12345",
+			headers:    map[string]string{"X-Forwarded-For": "10.0.0.1"},
+			allowed:    true,
+			statusCode: http.StatusOK,
+		},
+		{
+			name:       "ipv4:xff-spoofed-private:public-peer:denied",
+			remoteAddr: "8.8.8.8:12345",
+			headers:    map[string]string{"X-Forwarded-For": "10.0.0.1"},
+			allowed:    false,
+			statusCode: http.StatusForbidden,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody)
+			req.RemoteAddr = tt.remoteAddr
+			for k, v := range tt.headers {
+				req.Header.Set(k, v)
+			}
+
+			handler := UseRealIP(nil)(UsePrivateIP()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if !tt.allowed {
+					t.Errorf("UsePrivateIP() = %v but allowed (true), want %v", r.RemoteAddr, tt.allowed)
 				}
 
 				w.WriteHeader(http.StatusOK)
