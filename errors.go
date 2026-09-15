@@ -52,7 +52,7 @@ func IsExposableError(err error) bool {
 		return false
 	}
 	if ee, ok := err.(ExposableError); ok {
-		return !ee.Public()
+		return ee.Public()
 	}
 	return false
 }
