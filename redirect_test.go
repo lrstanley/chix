@@ -91,6 +91,19 @@ func TestUseNextURL_SkipNextURL(t *testing.T) {
 	}
 }
 
+func TestSecureRedirectOrNext_IPv6MappedRejected(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "http://[::1]/start?next=http://[::ffff:1.2.3.4]/phish", http.NoBody)
+	res := httptest.NewRecorder()
+	SecureRedirectOrNext(res, req, http.StatusFound, "/fallback")
+
+	if res.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusTemporaryRedirect)
+	}
+	if loc := res.Header().Get("Location"); loc != "/" {
+		t.Fatalf("location = %q, want %q", loc, "/")
+	}
+}
+
 func TestSecureRedirect(t *testing.T) {
 	t.Parallel()
 
@@ -181,6 +194,46 @@ func TestSecureRedirect(t *testing.T) {
 			target:     "http://example.com/foo",
 			wantCode:   http.StatusFound,
 			wantLoc:    "https://example.com/foo",
+		},
+		{
+			name:       "ipv6-different-literal",
+			requestURL: "http://[::1]/start",
+			status:     http.StatusFound,
+			target:     "http://[::2]/phish",
+			wantCode:   http.StatusTemporaryRedirect,
+			wantLoc:    "/",
+		},
+		{
+			name:       "ipv6-mapped-v4",
+			requestURL: "http://[::1]/start",
+			status:     http.StatusFound,
+			target:     "http://[::ffff:1.2.3.4]/phish",
+			wantCode:   http.StatusTemporaryRedirect,
+			wantLoc:    "/",
+		},
+		{
+			name:       "ipv6-same-literal",
+			requestURL: "http://[::1]/start",
+			status:     http.StatusFound,
+			target:     "http://[::1]/ok",
+			wantCode:   http.StatusFound,
+			wantLoc:    "http://[::1]/ok",
+		},
+		{
+			name:       "ipv6-same-literal-different-port",
+			requestURL: "http://[::1]:8080/start",
+			status:     http.StatusFound,
+			target:     "http://[::1]/ok",
+			wantCode:   http.StatusFound,
+			wantLoc:    "http://[::1]/ok",
+		},
+		{
+			name:       "dns-host-vs-ipv6",
+			requestURL: "http://example.com/start",
+			status:     http.StatusFound,
+			target:     "http://[::2]/phish",
+			wantCode:   http.StatusTemporaryRedirect,
+			wantLoc:    "/",
 		},
 	}
 

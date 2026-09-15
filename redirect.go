@@ -18,11 +18,7 @@ const (
 )
 
 func requestHost(r *http.Request) string {
-	host := r.Host
-	if i := strings.Index(host, ":"); i > -1 {
-		host = host[:i]
-	}
-	return host
+	return (&url.URL{Host: r.Host}).Hostname()
 }
 
 func nextURLCookie(r *http.Request, value string, maxAge int) *http.Cookie {
@@ -98,11 +94,7 @@ func SecureRedirect(w http.ResponseWriter, r *http.Request, status int, target s
 	}
 
 	reqHost := requestHost(r)
-	nextHost := next.Host
-	if i := strings.Index(nextHost, ":"); i > -1 {
-		nextHost = nextHost[:i]
-	}
-
+	nextHost := next.Hostname()
 	if !strings.EqualFold(reqHost, nextHost) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
