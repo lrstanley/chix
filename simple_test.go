@@ -8,6 +8,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -208,6 +209,41 @@ func TestUseAPIKeyRequired(t *testing.T) {
 			headers:    map[string]string{"X-Api-Key": "R5HKAjpQFKNW4KUHF2M4"},
 			ok:         true,
 			statusCode: http.StatusOK,
+		},
+		{
+			name:       "empty allowlist entry",
+			keys:       []string{""},
+			headers:    map[string]string{},
+			ok:         false,
+			statusCode: http.StatusPreconditionFailed,
+		},
+		{
+			name:       "empty allowlist entry with secret",
+			keys:       []string{"secret", ""},
+			headers:    map[string]string{},
+			ok:         false,
+			statusCode: http.StatusPreconditionFailed,
+		},
+		{
+			name:       "split trailing comma",
+			keys:       strings.Split("secret,", ","),
+			headers:    map[string]string{},
+			ok:         false,
+			statusCode: http.StatusPreconditionFailed,
+		},
+		{
+			name:       "match with empty allowlist entry",
+			keys:       []string{"secret", ""},
+			headers:    map[string]string{"X-Api-Key": "secret"},
+			ok:         true,
+			statusCode: http.StatusOK,
+		},
+		{
+			name:       "mismatch with empty allowlist entry",
+			keys:       []string{"secret", ""},
+			headers:    map[string]string{"X-Api-Key": "wrong"},
+			ok:         false,
+			statusCode: http.StatusUnauthorized,
 		},
 	}
 	for _, tt := range tests {

@@ -111,7 +111,6 @@ var (
 	ErrAccessDenied       = errors.New("access denied")
 	ErrAPIKeyInvalid      = errors.New("invalid api key provided")
 	ErrAPIKeyMissing      = errors.New("api key not specified")
-	ErrNoAPIKeys          = errors.New("no api keys provided in initialization")
 	ErrAPIVersionMissing  = errors.New("api version not specified")
 	ErrAPIVersionMismatch = errors.New("server and client version mismatch")
 )
@@ -161,13 +160,13 @@ func UseAPIKeyRequired(keys []string, header string) func(next http.Handler) htt
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			providedKey := r.Header.Get(header)
 
-			if slices.Contains(keys, providedKey) {
-				next.ServeHTTP(w, r)
+			if providedKey == "" {
+				ErrorWithCode(w, r, http.StatusPreconditionFailed, ErrAPIKeyMissing)
 				return
 			}
 
-			if providedKey == "" {
-				ErrorWithCode(w, r, http.StatusPreconditionFailed, ErrAPIKeyMissing)
+			if slices.Contains(keys, providedKey) {
+				next.ServeHTTP(w, r)
 				return
 			}
 
