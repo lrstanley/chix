@@ -13,10 +13,11 @@ import (
 var _ slog.Handler = (*MockHandler)(nil)
 
 type MockHandler struct {
-	Attrs   []slog.Attr
-	Groups  []string
-	Store   bool
-	Records [][]slog.Attr
+	Attrs    []slog.Attr
+	Groups   []string
+	Store    bool
+	Records  [][]slog.Attr
+	Messages []string
 }
 
 func (h *MockHandler) Enabled(_ context.Context, _ slog.Level) bool {
@@ -27,6 +28,8 @@ func (h *MockHandler) Handle(_ context.Context, or slog.Record) error {
 	if !h.Store {
 		return nil
 	}
+
+	h.Messages = append(h.Messages, or.Message)
 
 	attrs := slices.Clone(h.Attrs)
 	or.Attrs(func(attr slog.Attr) bool {

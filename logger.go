@@ -94,8 +94,8 @@ func DefaultLogConfig() *LogConfig {
 		RecoverPanics: true,
 		RequestQuery:  []string{"*"},
 		RequestHeaders: []string{
-			"Content-Type",
-			"Origin",
+			"Content-Type", //nolint:goconst
+			"Origin",       //nolint:goconst
 			"Cf-Ray",
 			"Cf-Ipcountry",
 			"X-Request-ID",
@@ -361,6 +361,10 @@ func panicStackFrames(callersSkip int) (stack []string, sourcePC uintptr) {
 //     if you want to use them in other middleware or handlers.
 //   - [SetLogError] can be used to set the error that occurred in the request/response,
 //     though if using [Error] and similar functions, this is automatically done for you.
+//   - Requests with Accept text/event-stream or an Upgrade: websocket header log a
+//     start line (e.g. "GET /events => received") before the handler runs. A
+//     finished event-stream or 101 response is not tagged ClientAborted on
+//     context cancel.
 func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //nolint:gocognit,funlen
 	if config == nil {
 		config = DefaultLogConfig()
@@ -412,6 +416,10 @@ func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //
 
 			start := time.Now()
 
+			if isLongLivedRequest(r) {
+				logLongLivedStart(ctx, logger, config, hasGroupDelimiter, r)
+			}
+
 			defer func() {
 				var panicSourcePC uintptr
 
@@ -457,25 +465,16 @@ func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //
 					return
 				}
 
+				entry.append(config.requestLogAttrs(r)...)
 				entry.append(
-					slog.String(config.Schema.RequestURL, config.GetRequestURL(r)),
-					slog.String(config.Schema.RequestMethod, r.Method),
-					slog.String(config.Schema.RequestPath, r.URL.Path),
-					slog.String(config.Schema.RequestRemoteIP, sanitizeIP(r.RemoteAddr)),
-					slog.String(config.Schema.RequestHost, r.Host),
-					slog.String(config.Schema.RequestScheme, config.GetRequestScheme(r)),
-					slog.String(config.Schema.RequestProto, r.Proto),
-					slog.Any(config.Schema.RequestHeaders, slog.GroupValue(logging.GetHeaderAttrs(r.Header, config.RequestHeaders)...)),
-					slog.Int64(config.Schema.RequestBytes, r.ContentLength),
-					slog.String(config.Schema.RequestUserAgent, r.UserAgent()),
-					slog.String(config.Schema.RequestReferer, r.Referer()),
 					slog.Any(config.Schema.ResponseHeaders, slog.GroupValue(logging.GetHeaderAttrs(ww.Header(), config.ResponseHeaders)...)),
 					slog.Int(config.Schema.ResponseStatus, statusCode),
 					config.Schema.ResponseDurationFormat(config.Schema.ResponseDuration, duration),
 					slog.Int(config.Schema.ResponseBytes, ww.BytesWritten()),
 				)
 
-				if err := ctx.Err(); errors.Is(err, context.Canceled) {
+				if err := ctx.Err(); errors.Is(err, context.Canceled) &&
+					!omitCanceledAsClientAborted(statusCode, ww.Header()) {
 					entry.append(
 						slog.String("error", "request aborted: client disconnected before response was sent"),
 						slog.String(config.Schema.ErrorType, "ClientAborted"),
@@ -524,5 +523,64 @@ func UseStructuredLogger(config *LogConfig) func(http.Handler) http.Handler { //
 
 			next.ServeHTTP(ww, r.WithContext(ctx))
 		})
+	}
+}
+
+func isLongLivedRequest(r *http.Request) bool {
+	if strings.Contains(strings.ToLower(r.Header.Get("Accept")), sseContentType) {
+		return true
+	}
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+}
+
+func omitCanceledAsClientAborted(status int, header http.Header) bool {
+	if status == http.StatusSwitchingProtocols {
+		return true
+	}
+	ct, _, _ := strings.Cut(header.Get("Content-Type"), ";")
+	return strings.EqualFold(strings.TrimSpace(ct), sseContentType)
+}
+
+func logLongLivedStart(
+	ctx context.Context,
+	logger *slog.Logger,
+	config *LogConfig,
+	hasGroupDelimiter bool,
+	r *http.Request,
+) {
+	level := config.Leveler(r, 0)
+	if !logger.Enabled(ctx, level) || (config.Level != nil && level < *config.Level) {
+		return
+	}
+
+	var attrs []slog.Attr
+	for _, attr := range config.requestLogAttrs(r) {
+		if attr.Key != "" {
+			attrs = append(attrs, attr)
+		}
+	}
+	if id := GetRequestIDOrHeader(ctx, r); id != "" {
+		attrs = append(attrs, slog.String(config.Schema.RequestID, id))
+	}
+	if hasGroupDelimiter {
+		attrs = logging.GroupAttrsRecursive(attrs)
+	}
+
+	logger.LogAttrs(ctx, level, r.Method+" "+r.URL.Path+" => received", attrs...) //nolint:sloglint
+}
+
+func (c *LogConfig) requestLogAttrs(r *http.Request) []slog.Attr {
+	return []slog.Attr{
+		slog.String(c.Schema.RequestURL, c.GetRequestURL(r)),
+		slog.String(c.Schema.RequestMethod, r.Method),
+		slog.String(c.Schema.RequestPath, r.URL.Path),
+		slog.String(c.Schema.RequestRemoteIP, sanitizeIP(r.RemoteAddr)),
+		slog.String(c.Schema.RequestHost, r.Host),
+		slog.String(c.Schema.RequestScheme, c.GetRequestScheme(r)),
+		slog.String(c.Schema.RequestProto, r.Proto),
+		slog.Any(c.Schema.RequestHeaders, slog.GroupValue(logging.GetHeaderAttrs(r.Header, c.RequestHeaders)...)),
+		slog.Int64(c.Schema.RequestBytes, r.ContentLength),
+		slog.String(c.Schema.RequestUserAgent, r.UserAgent()),
+		slog.String(c.Schema.RequestReferer, r.Referer()),
 	}
 }

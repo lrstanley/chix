@@ -86,7 +86,7 @@ func SecureRedirect(w http.ResponseWriter, r *http.Request, status int, target s
 		return
 	}
 
-	if next.Scheme != "http" && next.Scheme != "https" {
+	if next.Scheme != "http" && next.Scheme != "https" { //nolint:goconst
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}

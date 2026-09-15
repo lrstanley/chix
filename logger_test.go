@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/lrstanley/chix/v2/internal/logging"
@@ -188,6 +189,114 @@ func (h *captureSourceHandler) Handle(_ context.Context, r slog.Record) error {
 func (h *captureSourceHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
 
 func (h *captureSourceHandler) WithGroup(string) slog.Handler { return h }
+
+func TestUseStructuredLogger_sseAndWebsocketStart(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		req       func() *http.Request
+		handler   http.Handler
+		wantStart string
+	}{
+		{
+			name: "sse",
+			req: func() *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "http://example.com/events", http.NoBody)
+				req.Header.Set("Accept", "text/event-stream")
+				return req
+			},
+			handler: UseSSE(&SSEConfig{
+				ProducerFn: func(_ context.Context, _ *http.Request, events chan<- *SSEEvent) error {
+					events <- &SSEEvent{Data: "ok"}
+					return nil
+				},
+			}),
+			wantStart: "GET /events => received",
+		},
+		{
+			name: "websocket",
+			req: func() *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "http://example.com/ws", http.NoBody)
+				req.Header.Set("Connection", "Upgrade")
+				req.Header.Set("Upgrade", "websocket")
+				return req
+			},
+			handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusSwitchingProtocols)
+			}),
+			wantStart: "GET /ws => received",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			logHandler := &logging.MockHandler{Store: true}
+			cfg := NewConfig().SetLogger(slog.New(logHandler))
+			h := cfg.Use()(UseStructuredLogger(DefaultLogConfig())(tt.handler))
+
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, tt.req())
+
+			if len(logHandler.Messages) < 2 {
+				t.Fatalf("messages = %v, want at least 2", logHandler.Messages)
+			}
+			if logHandler.Messages[0] != tt.wantStart {
+				t.Fatalf("start message = %q, want %q", logHandler.Messages[0], tt.wantStart)
+			}
+			if !strings.Contains(logHandler.Messages[1], "=>") {
+				t.Fatalf("completion message = %q, want status line", logHandler.Messages[1])
+			}
+		})
+	}
+}
+
+func TestUseStructuredLogger_sseCancelNotClientAborted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		logHandler := &logging.MockHandler{Store: true}
+		cfg := NewConfig().SetLogger(slog.New(logHandler))
+		h := cfg.Use()(UseStructuredLogger(DefaultLogConfig())(UseSSE(&SSEConfig{
+			ProducerFn: func(ctx context.Context, _ *http.Request, events chan<- *SSEEvent) error {
+				select {
+				case events <- &SSEEvent{Data: "ok"}:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+				<-ctx.Done()
+				return nil
+			},
+		})))
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		req := httptest.NewRequest(http.MethodGet, "http://example.com/events", http.NoBody).WithContext(ctx)
+		req.Header.Set("Accept", "text/event-stream")
+
+		go h.ServeHTTP(httptest.NewRecorder(), req)
+		synctest.Wait()
+		cancel()
+		synctest.Wait()
+
+		if len(logHandler.Messages) < 2 {
+			t.Fatalf("messages = %v, want start and completion", logHandler.Messages)
+		}
+		if logHandler.Messages[0] != "GET /events => received" {
+			t.Fatalf("start message = %q", logHandler.Messages[0])
+		}
+		for _, attrs := range logHandler.Records {
+			for _, attr := range attrs {
+				if attr.Key == "error" && strings.Contains(attr.Value.String(), "client disconnected before response was sent") {
+					t.Fatalf("completion tagged ClientAborted: %v", attrs)
+				}
+				if attr.Value.String() == "ClientAborted" {
+					t.Fatalf("completion tagged ClientAborted: %v", attrs)
+				}
+			}
+		}
+	})
+}
 
 func TestUseStructuredLogger_panicLogSource(t *testing.T) {
 	srcCapture := &captureSourceHandler{}

@@ -95,6 +95,7 @@ go get -u github.com/lrstanley/chix/v2@latest
 - Debug middleware so handlers can tell if debug mode is on; integrates with error responses when you want details only in debug.
 - Error handling that distinguishes API vs static/HTML responses, with `ResolvedError`, optional `ExposableError`, and per-error-type resolver functions.
 - `go:embed` static file serving (SPA fallback, optional local directory override for development, catch-all safe behavior near API routes).
+- Server-Sent Events (`UseSSE`): spec-compliant event streams with last-event-id, comment heartbeats, and write-idle deadlines.
 - Redirect helpers for auth flows: store a `next` URL in a cookie and redirect safely afterward.
 - Small utilities: multi-header middleware, strip-slashes that skips `/debug/` for pprof, conditional middleware (`UseIf` / `UseIfFunc`).
 - Middleware for `robots.txt` and `security.txt`.
