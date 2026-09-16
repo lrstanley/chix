@@ -60,9 +60,12 @@ type SSEEvent struct {
 // See [UseSSE] for more information.
 type SSEConfig struct {
 	// ProducerFn generates events for the stream. It must return when ctx is
-	// done (select on ctx.Done() versus send). Returning ends the stream: the
-	// handler writes any remaining buffered events, then closes the channel.
-	// Send only; do not close events. A nil *SSEEvent is skipped.
+	// done. A blocking send is safe: if the client disconnects, the handler
+	// unblocks pending sends even while a write is in progress. Select on
+	// ctx.Done() in the producer loop so it can return; a second select around
+	// send is unnecessary. Returning ends the stream: the handler writes any
+	// remaining buffered events, then closes the channel. Send only; do not
+	// close events. A nil *SSEEvent is skipped.
 	//
 	// Example:
 	//
@@ -173,7 +176,8 @@ type sseStream struct {
 }
 
 func serveSSE(config *SSEConfig, w http.ResponseWriter, r *http.Request, flusher http.Flusher) { //nolint:gocognit,funlen
-	ctx := context.WithValue(r.Context(), contextKeySSELastEventID{}, r.Header.Get(headerLastEventID))
+	reqCtx := r.Context()
+	ctx := context.WithValue(reqCtx, contextKeySSELastEventID{}, r.Header.Get(headerLastEventID))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	r = r.WithContext(ctx)
@@ -190,6 +194,7 @@ func serveSSE(config *SSEConfig, w http.ResponseWriter, r *http.Request, flusher
 
 	ch := make(chan *SSEEvent, 1)
 	done := make(chan error, 1)
+	exited := make(chan struct{})
 	go func() {
 		var err error
 		defer func() {
@@ -197,15 +202,28 @@ func serveSSE(config *SSEConfig, w http.ResponseWriter, r *http.Request, flusher
 				err = fmt.Errorf("sse producer panic: %v", rec)
 			}
 			done <- err
+			close(exited)
 		}()
 		err = config.ProducerFn(ctx, r, ch)
+	}()
+
+	// Unblock ProducerFn sends if the client goes away while the handler is
+	// stuck in Write (the main loop is not receiving then). Watch reqCtx, not
+	// ctx, so our own cancel() after a clean producer return does not race
+	// drainSSEEvents.
+	go func() {
+		select {
+		case <-reqCtx.Done():
+			waitSSEProducer(exited, ch)
+		case <-exited:
+		}
 	}()
 
 	producerDone := false
 	defer func() {
 		cancel()
 		if !producerDone {
-			_ = waitSSEProducer(done, ch)
+			waitSSEProducer(exited, ch)
 		}
 		close(ch)
 	}()
@@ -313,11 +331,11 @@ func (s *sseStream) onProducerDone(err error, ch <-chan *SSEEvent) {
 	}
 }
 
-func waitSSEProducer(done <-chan error, ch <-chan *SSEEvent) error {
+func waitSSEProducer(exited <-chan struct{}, ch <-chan *SSEEvent) {
 	for {
 		select {
-		case err := <-done:
-			return err
+		case <-exited:
+			return
 		case <-ch:
 		}
 	}

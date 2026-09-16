@@ -596,3 +596,51 @@ func TestUseSSE_cancelUnblocksSend(t *testing.T) {
 		}
 	})
 }
+
+type blockWriteFlusher struct {
+	http.ResponseWriter
+	unblock <-chan struct{}
+}
+
+func (w *blockWriteFlusher) Write(p []byte) (int, error) {
+	<-w.unblock
+	return w.ResponseWriter.Write(p)
+}
+
+func (w *blockWriteFlusher) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func TestUseSSE_requestCancelUnblocksSendDuringWrite(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		finished := make(chan struct{})
+		h := UseSSE(&SSEConfig{
+			ProducerFn: func(ctx context.Context, _ *http.Request, events chan<- *SSEEvent) error {
+				defer close(finished)
+				events <- &SSEEvent{Data: "one"}
+				events <- &SSEEvent{Data: "two"}
+				events <- &SSEEvent{Data: "three"}
+				<-ctx.Done()
+				return ctx.Err()
+			},
+		})
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		req := httptest.NewRequest(http.MethodGet, "http://example.com/events", http.NoBody).WithContext(ctx)
+		unblock := make(chan struct{})
+		go h.ServeHTTP(&blockWriteFlusher{ResponseWriter: httptest.NewRecorder(), unblock: unblock}, req)
+		synctest.Wait()
+		cancel()
+		synctest.Wait()
+
+		select {
+		case <-finished:
+		default:
+			t.Fatal("producer did not return after request cancel during write")
+		}
+		close(unblock)
+	})
+}
