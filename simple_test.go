@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/synctest"
 )
 
 func TestUseHeaders(t *testing.T) {
@@ -78,6 +79,71 @@ func TestUseWithContext(t *testing.T) {
 	}))
 
 	handler.ServeHTTP(httptest.NewRecorder(), req)
+}
+
+func TestUseCancelOnShutdown(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		parent, stop := context.WithCancel(t.Context())
+		defer stop()
+
+		finished := make(chan struct{})
+		h := UseCancelOnShutdown(parent)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			defer close(finished)
+			<-r.Context().Done()
+		}))
+
+		go h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody))
+		synctest.Wait()
+		stop()
+		synctest.Wait()
+
+		select {
+		case <-finished:
+		default:
+			t.Fatal("handler did not return after parent cancel")
+		}
+	})
+}
+
+func TestUseCancelOnShutdown_parentLive(t *testing.T) {
+	t.Parallel()
+
+	parent, stop := context.WithCancel(t.Context())
+	defer stop()
+
+	h := UseCancelOnShutdown(parent)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		if err := r.Context().Err(); err != nil {
+			t.Fatalf("request ctx err = %v, want nil", err)
+		}
+	}))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody))
+}
+
+func TestUseCancelOnShutdown_requestCancel(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		parent, stop := context.WithCancel(t.Context())
+		defer stop()
+
+		finished := make(chan struct{})
+		h := UseCancelOnShutdown(parent)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			defer close(finished)
+			<-r.Context().Done()
+		}))
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		req := httptest.NewRequest(http.MethodGet, "http://example.com", http.NoBody).WithContext(ctx)
+		go h.ServeHTTP(httptest.NewRecorder(), req)
+		synctest.Wait()
+		cancel()
+		synctest.Wait()
+
+		select {
+		case <-finished:
+		default:
+			t.Fatal("handler did not return after request cancel")
+		}
+	})
 }
 
 func TestUseIf(t *testing.T) {

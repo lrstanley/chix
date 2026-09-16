@@ -184,3 +184,25 @@ func UseWithContext(fn func(ctx context.Context) context.Context) func(next http
 		})
 	}
 }
+
+// UseCancelOnShutdown cancels the request context when parent is done.
+// [net/http.Server.Shutdown] does not cancel in-flight requests, so long-lived
+// handlers (long-polling, WebSockets) that only select on [http.Request.Context]
+// never return and block graceful shutdown. Mount this only on those routes;
+// using it globally would abort ordinary requests at the start of shutdown
+// instead of letting them drain.
+//
+// Pass the same context given to [Run] or [NewServer]. If you only call
+// [http.Server.Shutdown], cancel parent from [http.Server.RegisterOnShutdown].
+// For Server-Sent Events, [SSEConfig.Shutdown] is the equivalent hook.
+func UseCancelOnShutdown(parent context.Context) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithCancel(r.Context())
+			defer cancel()
+			stop := context.AfterFunc(parent, cancel)
+			defer stop()
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
