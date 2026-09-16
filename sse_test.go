@@ -563,6 +563,65 @@ func TestUseSSE_heartbeats(t *testing.T) {
 	})
 }
 
+func TestUseSSE_shutdownCancelsProducer(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		shutdown, stop := context.WithCancel(t.Context())
+		defer stop()
+		finished := make(chan struct{})
+		h := UseSSE(&SSEConfig{
+			Shutdown: shutdown,
+			ProducerFn: func(ctx context.Context, _ *http.Request, _ chan<- *SSEEvent) error {
+				defer close(finished)
+				<-ctx.Done()
+				return ctx.Err()
+			},
+		})
+
+		go h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://example.com/events", http.NoBody))
+		synctest.Wait()
+		stop()
+		synctest.Wait()
+
+		select {
+		case <-finished:
+		default:
+			t.Fatal("producer did not return after Shutdown cancel")
+		}
+	})
+}
+
+func TestUseSSE_shutdownUnblocksSendDuringWrite(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		shutdown, stop := context.WithCancel(t.Context())
+		defer stop()
+		finished := make(chan struct{})
+		h := UseSSE(&SSEConfig{
+			Shutdown: shutdown,
+			ProducerFn: func(ctx context.Context, _ *http.Request, events chan<- *SSEEvent) error {
+				defer close(finished)
+				events <- &SSEEvent{Data: "one"}
+				events <- &SSEEvent{Data: "two"}
+				events <- &SSEEvent{Data: "three"}
+				<-ctx.Done()
+				return ctx.Err()
+			},
+		})
+
+		unblock := make(chan struct{})
+		go h.ServeHTTP(&blockWriteFlusher{ResponseWriter: httptest.NewRecorder(), unblock: unblock}, httptest.NewRequest(http.MethodGet, "http://example.com/events", http.NoBody))
+		synctest.Wait()
+		stop()
+		synctest.Wait()
+
+		select {
+		case <-finished:
+		default:
+			t.Fatal("producer did not return after Shutdown cancel during write")
+		}
+		close(unblock)
+	})
+}
+
 func TestUseSSE_cancelUnblocksSend(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		finished := make(chan struct{})

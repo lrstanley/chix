@@ -20,7 +20,7 @@ const (
 	sseContentType             = "text/event-stream"
 	ssePing                    = ": ping\n\n"
 	sseDefaultWriteIdleTimeout = 300 * time.Second
-	headerLastEventID          = "Last-Event-Id"
+	headerLastEventID          = "Last-Event-ID"
 )
 
 type contextKeySSELastEventID struct{}
@@ -100,6 +100,17 @@ type SSEConfig struct {
 	// default 15s WriteTimeout. Defaults to 3*HeartbeatInterval when
 	// heartbeats are enabled, otherwise 300s.
 	WriteIdleTimeout time.Duration
+
+	// Shutdown, when non-nil, is cancelled to terminate active streams.
+	// [net/http.Server.Shutdown] does not cancel in-flight requests, so long-lived
+	// streams would otherwise block graceful shutdown. Nil means streams end
+	// only when the client disconnects or ProducerFn returns.
+	//
+	// Pass the same context given to [Run] or [NewServer]. If you only call
+	// [http.Server.Shutdown], cancel this context from
+	// [http.Server.RegisterOnShutdown]. For non-SSE long-polling, see
+	// [UseCancelOnShutdown].
+	Shutdown context.Context
 }
 
 // Validate validates the SSE config and applies defaults. Use this to validate
@@ -180,6 +191,12 @@ func serveSSE(config *SSEConfig, w http.ResponseWriter, r *http.Request, flusher
 	ctx := context.WithValue(reqCtx, contextKeySSELastEventID{}, r.Header.Get(headerLastEventID))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	var shutdown <-chan struct{}
+	if config.Shutdown != nil {
+		shutdown = config.Shutdown.Done()
+		stop := context.AfterFunc(config.Shutdown, cancel)
+		defer stop()
+	}
 	r = r.WithContext(ctx)
 
 	s := &sseStream{
@@ -207,13 +224,15 @@ func serveSSE(config *SSEConfig, w http.ResponseWriter, r *http.Request, flusher
 		err = config.ProducerFn(ctx, r, ch)
 	}()
 
-	// Unblock ProducerFn sends if the client goes away while the handler is
-	// stuck in Write (the main loop is not receiving then). Watch reqCtx, not
-	// ctx, so our own cancel() after a clean producer return does not race
-	// drainSSEEvents.
+	// Unblock ProducerFn sends if the client goes away, or Shutdown is
+	// cancelled, while the handler is stuck in Write (the main loop is not
+	// receiving then). Watch reqCtx, not ctx, so our own cancel() after a
+	// clean producer return does not race drainSSEEvents.
 	go func() {
 		select {
 		case <-reqCtx.Done():
+			waitSSEProducer(exited, ch)
+		case <-shutdown:
 			waitSSEProducer(exited, ch)
 		case <-exited:
 		}
