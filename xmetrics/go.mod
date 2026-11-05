@@ -1,10 +1,10 @@
-module github.com/lrstanley/chix/v2/xmetrics
+module github.com/lrstanley/chix/xmetrics/v2
 
 go 1.27.0
 
 require (
 	github.com/go-chi/chi/v5 v5.5.0
-	github.com/lrstanley/x/sync v0.0.0-20261102020005-a6482435cbe1
+	github.com/lrstanley/x/sync v0.0.0-20261104075503-ecb8fb07f03c
 	github.com/prometheus/client_golang v1.25.0
 )
 

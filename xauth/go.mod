@@ -14,11 +14,11 @@ require (
 	github.com/go-playground/form/v4 v4.5.1 // indirect
 	github.com/go-playground/locales v0.14.2 // indirect
 	github.com/go-playground/universal-translator v0.18.2 // indirect
-	github.com/go-playground/validator/v10 v10.30.5 // indirect
+	github.com/go-playground/validator/v10 v10.30.6 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect
-	github.com/lrstanley/x/sync v0.0.0-20261102020005-a6482435cbe1 // indirect
+	github.com/lrstanley/x/sync v0.0.0-20261104075503-ecb8fb07f03c // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
