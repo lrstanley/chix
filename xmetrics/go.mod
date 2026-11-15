@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/go-chi/chi/v5 v5.5.0
-	github.com/lrstanley/x/sync v0.0.0-20261104075503-ecb8fb07f03c
+	github.com/lrstanley/x/sync v0.0.0-20261114083341-9a83c78e3aa5
 	github.com/prometheus/client_golang v1.25.0
 )
 
